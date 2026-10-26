@@ -9,7 +9,7 @@
    <StackPanel x:Name="QuotaRows"/>
    <TextBlock x:Name="EmptyHint" Text="Select a service in Settings" Margin="0,24" HorizontalAlignment="Center" Visibility="Collapsed"/>
    <Border Height="1" Background="{DynamicResource Line}" Margin="0,14,0,14"/>
-   <Grid><Button x:Name="LaunchButton" Content="▶  Launch Codex" HorizontalAlignment="Left" Background="{DynamicResource Accent}" Foreground="#10231F" Click="LaunchCodex"/><Button x:Name="LockButton" HorizontalAlignment="Right" Click="ToggleLock"/></Grid>
+   <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><Button x:Name="LaunchButton" Content="▶  Launch Codex" Background="{DynamicResource Accent}" Foreground="#10231F" Click="LaunchCodex"/><Button x:Name="TopButton" Grid.Column="1" Click="ToggleTop" ToolTip="Always on top" Padding="9,8"/><Button x:Name="LockButton" Grid.Column="2" Click="ToggleLock" Padding="9,8"/></Grid>
   </StackPanel>
  </Border>
 </Window>

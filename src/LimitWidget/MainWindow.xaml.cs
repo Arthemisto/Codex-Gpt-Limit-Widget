@@ -9,11 +9,30 @@ public partial class MainWindow : Window
  public bool ShowCodex = true, ShowGpt, Locked;
  public string Theme = "Dark";
  public Color AccentColor = Color.FromRgb(57, 223, 181);
- public MainWindow() { InitializeComponent(); RefreshView(); }
+ public double GlassOpacity = 0.8;
+ public int RefreshMinutes = 10;
+ public MainWindow()
+ {
+  InitializeComponent();
+  var saved = WidgetSettings.Load();
+  ShowCodex = saved.ShowCodex; ShowGpt = saved.ShowGpt; Locked = saved.Locked; Topmost = saved.Topmost;
+  Theme = saved.Theme is "Light" or "Dark" or "Adaptive glass" ? saved.Theme : "Dark";
+  try { AccentColor = (Color)ColorConverter.ConvertFromString(saved.Accent); } catch (Exception e) when (e is FormatException or NotSupportedException) { }
+  GlassOpacity = double.IsFinite(saved.Opacity) ? Math.Clamp(saved.Opacity, 0.2, 1) : 0.8;
+  RefreshMinutes = new[] { 1, 5, 10, 15, 30, 60 }.Contains(saved.RefreshMinutes) ? saved.RefreshMinutes : 10;
+  SetWidgetSize(double.IsFinite(saved.Width) ? Math.Clamp(saved.Width, 330, 450) : 390);
+  RefreshView();
+ }
+ public void SetWidgetSize(double width)
+ {
+  Width = width;
+  ((FrameworkElement)Content).LayoutTransform = new ScaleTransform(width / 390, width / 390);
+ }
+ public void SaveSettings() => new WidgetSettings { ShowCodex = ShowCodex, ShowGpt = ShowGpt, Locked = Locked, Topmost = Topmost, Theme = Theme, Accent = AccentColor.ToString(), Width = Width, Opacity = GlassOpacity, RefreshMinutes = RefreshMinutes }.Save();
  public void RefreshView()
  {
   bool light = Theme == "Light";
-  Application.Current.Resources["Surface"] = new SolidColorBrush(light ? Color.FromRgb(244, 247, 250) : Theme == "Adaptive glass" ? Color.FromArgb(205, 32, 40, 47) : Color.FromRgb(32, 40, 47));
+  Application.Current.Resources["Surface"] = new SolidColorBrush(light ? Color.FromRgb(244, 247, 250) : Theme == "Adaptive glass" ? Color.FromArgb((byte)Math.Round(GlassOpacity * 255), 32, 40, 47) : Color.FromRgb(32, 40, 47));
   Application.Current.Resources["Foreground"] = new SolidColorBrush(light ? Color.FromRgb(25, 36, 44) : Color.FromRgb(244, 247, 250));
   Application.Current.Resources["Muted"] = new SolidColorBrush(light ? Color.FromRgb(79, 96, 110) : Color.FromRgb(168, 181, 192));
   Application.Current.Resources["Line"] = new SolidColorBrush(light ? Color.FromRgb(202, 211, 219) : Color.FromRgb(70, 82, 91));
@@ -23,6 +42,7 @@ public partial class MainWindow : Window
   if (ShowGpt) AddService("CHATGPT · V2 PREVIEW", 81, 63, new SolidColorBrush(Color.FromRgb(171, 85, 245)));
   EmptyHint.Visibility = ShowCodex || ShowGpt ? Visibility.Collapsed : Visibility.Visible;
   LockButton.Content = Locked ? "🔒 Locked" : "🔓 Move";
+  TopButton.Content = Topmost ? "↑ On" : "↑ Off";
  }
  void AddService(string title, double first, double second, Brush color)
  {
@@ -42,6 +62,7 @@ public partial class MainWindow : Window
  }
  void DragHeader(object sender, MouseButtonEventArgs e) { if (!Locked && e.OriginalSource is not Button) DragMove(); }
  void ToggleLock(object sender, RoutedEventArgs e) { Locked = !Locked; RefreshView(); }
+ void ToggleTop(object sender, RoutedEventArgs e) { Topmost = !Topmost; RefreshView(); }
  void OpenSettings(object sender, RoutedEventArgs e)
  {
   if (settings != null) { settings.Activate(); return; }

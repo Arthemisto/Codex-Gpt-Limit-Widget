@@ -13,7 +13,11 @@ public sealed class SettingsWindow : Window
   SetResourceReference(BackgroundProperty, "Surface");
   Content = new ScrollViewer { Content = panel, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
   Heading("Settings", 25); Heading("Refresh interval");
-  var interval = new ComboBox { ItemsSource = new[] { "1 minute", "5 minutes", "10 minutes", "15 minutes", "30 minutes", "60 minutes" }, SelectedIndex = 2, Padding = new Thickness(8) }; panel.Children.Add(interval);
+  int[] intervals = { 1, 5, 10, 15, 30, 60 };
+  var intervalLabel = new TextBlock { Text = $"Every {widget.RefreshMinutes} minutes" }; panel.Children.Add(intervalLabel);
+  var interval = new Slider { Minimum = 0, Maximum = 5, TickFrequency = 1, IsSnapToTickEnabled = true, TickPlacement = System.Windows.Controls.Primitives.TickPlacement.BottomRight, Value = Array.IndexOf(intervals, widget.RefreshMinutes), Margin = new Thickness(0, 10, 0, 0) };
+  interval.ValueChanged += (_, _) => { widget.RefreshMinutes = intervals[(int)interval.Value]; intervalLabel.Text = $"Every {widget.RefreshMinutes} minutes"; }; panel.Children.Add(interval);
+  Note("1m          5m          10m          15m          30m          60m");
   Note("Preview only · no network requests");
   Heading("Accent palette"); var colors = Row();
   foreach (string hex in new[] { "#39DFB5", "#318CFF", "#AB55F5", "#FFC44D" })
@@ -27,7 +31,7 @@ public sealed class SettingsWindow : Window
   Heading("Widget size"); var sizes = Row();
   foreach (var size in new[] { ("S", 330d), ("M", 390d), ("L", 450d) })
   {
-   var button = new Button { Content = size.Item1, Width = 90 }; button.Click += (_, _) => { widget.Width = size.Item2; widget.LayoutTransform = new ScaleTransform(size.Item2 / 390, size.Item2 / 390); }; sizes.Children.Add(button);
+   var button = new Button { Content = size.Item1, Width = 90 }; button.Click += (_, _) => widget.SetWidgetSize(size.Item2); sizes.Children.Add(button);
   }
   Heading("Account"); var login = new Button { Content = "Sign in · unavailable in prototype", IsEnabled = false }; panel.Children.Add(login);
   Check("Remember me", true, _ => { });
@@ -37,9 +41,21 @@ public sealed class SettingsWindow : Window
   {
    var button = new Button { Content = theme, Padding = new Thickness(10, 12, 10, 12) }; button.Click += (_, _) => { widget.Theme = theme; widget.RefreshView(); }; themes.Children.Add(button);
   }
-  Note("Glass preview uses transparency; native blur and automatic adaptation come later.");
+  Heading("Glass background opacity");
+  var opacityLabel = new TextBlock { Text = $"{widget.GlassOpacity:P0} · Adaptive glass only" }; panel.Children.Add(opacityLabel);
+  var opacity = new Slider { Minimum = 20, Maximum = 100, Value = widget.GlassOpacity * 100, TickFrequency = 5, IsSnapToTickEnabled = true, Margin = new Thickness(0, 10, 0, 0) };
+  opacity.ValueChanged += (_, _) => { widget.GlassOpacity = opacity.Value / 100; opacityLabel.Text = $"{widget.GlassOpacity:P0} · Adaptive glass only"; widget.RefreshView(); }; panel.Children.Add(opacity);
+  Note("Text stays opaque. Native blur and automatic adaptation come later.");
+  Check("Always on top", widget.Topmost, value => { widget.Topmost = value; widget.RefreshView(); });
   Check("Lock position", widget.Locked, value => { widget.Locked = value; widget.RefreshView(); });
-  Note("Settings are temporary in this prototype.");
+  var save = new Button { Content = "Save settings", Margin = new Thickness(0, 16, 0, 0) };
+  save.Click += (_, _) =>
+  {
+   try { widget.SaveSettings(); Close(); }
+   catch (Exception e) when (e is System.IO.IOException or UnauthorizedAccessException) { MessageBox.Show(this, $"Could not save settings: {e.Message}", "Save failed", MessageBoxButton.OK, MessageBoxImage.Warning); }
+  };
+  panel.Children.Add(save);
+  Note("Changes preview immediately. Save keeps them for the next launch.");
  }
  void Heading(string text, double size = 14) => panel.Children.Add(new TextBlock { Text = text, FontSize = size, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 16, 0, 10) });
  void Note(string text) { var note = new TextBlock { Text = text, FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 8, 0, 4) }; note.SetResourceReference(TextBlock.ForegroundProperty, "Muted"); panel.Children.Add(note); }
