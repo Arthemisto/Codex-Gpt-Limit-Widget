@@ -51,6 +51,15 @@ if (args.Contains("--live"))
 
 int checks = 0;
 void Check(bool condition, string message) { if (!condition) throw new Exception(message); checks++; }
+Check(ServiceErrors.IsRecoverable(new System.ComponentModel.Win32Exception(193)), "Disconnect handles invalid executable and job assignment failures");
+Check(ServiceErrors.IsRecoverable(new InvalidOperationException()), "Disconnect handles invalid service state");
+Check(ServiceErrors.IsRecoverable(new JsonException()), "Disconnect handles malformed service response");
+string collisionName = "Local\\CodexWidgetTest-" + Guid.NewGuid().ToString("N");
+using (var collision = new Mutex(false, collisionName))
+{
+    try { using var conflicting = new EventWaitHandle(false, EventResetMode.AutoReset, collisionName); throw new Exception("Expected object type collision"); }
+    catch (WaitHandleCannotBeOpenedException error) { Check(ServiceErrors.IsStartupConflict(error), "Startup handles actual named-object type collision"); }
+}
 string executableFixture = Path.Combine(AppContext.BaseDirectory, "executable-tests");
 string bundledRoot = Path.Combine(executableFixture, "bin");
 string versionedRoot = Path.Combine(bundledRoot, "current-version");

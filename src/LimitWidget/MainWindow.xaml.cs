@@ -260,7 +260,7 @@ public partial class MainWindow : Window
             AccountStatus = "Disconnected"; status = "Sign in from Settings to connect your widget."; hasError = false;
             SaveSettings();
         }
-        catch (Exception e) when (e is IOException or InvalidDataException or KeyNotFoundException or TimeoutException or UnauthorizedAccessException or OperationCanceledException)
+        catch (Exception e) when (ServiceErrors.IsRecoverable(e))
         { status = "Could not disconnect. Please try again."; }
         finally { busy = false; RefreshView(); }
     }

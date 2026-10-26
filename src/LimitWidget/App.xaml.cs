@@ -16,11 +16,11 @@ public partial class App : Application
         }
         try
         {
-        instance = new Mutex(true, @"Local\CodexGptLimitWidget", out bool first);
-        showEvent = new EventWaitHandle(false, EventResetMode.AutoReset, @"Local\CodexGptLimitWidget.Show");
-        if (!first) { showEvent.Set(); Shutdown(); return; }
+            instance = new Mutex(true, @"Local\CodexGptLimitWidget", out bool first);
+            showEvent = new EventWaitHandle(false, EventResetMode.AutoReset, @"Local\CodexGptLimitWidget.Show");
+            if (!first) { showEvent.Set(); Shutdown(); return; }
         }
-        catch (Exception error) when (error is UnauthorizedAccessException or System.IO.IOException)
+        catch (Exception error) when (Services.ServiceErrors.IsStartupConflict(error))
         {
             MessageBox.Show("The widget could not access its single-instance controls. Close any existing widget, including instances running as administrator, and try again.", "Codex Limit Widget", MessageBoxButton.OK, MessageBoxImage.Warning);
             Shutdown(); return;
