@@ -46,6 +46,16 @@ if (args.Contains("--live"))
 
 int checks = 0;
 void Check(bool condition, string message) { if (!condition) throw new Exception(message); checks++; }
+Check(ColorMath.FromHsv(0, 1, 1) == ((byte)255, (byte)0, (byte)0), "Hue red");
+Check(ColorMath.FromHsv(120, 1, 1) == ((byte)0, (byte)255, (byte)0), "Hue green");
+Check(ColorMath.FromHsv(240, 1, 1) == ((byte)0, (byte)0, (byte)255), "Hue blue");
+Check(ColorMath.FromHsv(180, 0, 1) == ((byte)255, (byte)255, (byte)255), "Zero saturation is white at full brightness");
+Check(ColorMath.FromHsv(180, 1, 0) == ((byte)0, (byte)0, (byte)0), "Zero brightness is black");
+foreach (var rgb in new[] { ((byte)57, (byte)223, (byte)181), ((byte)171, (byte)85, (byte)245), ((byte)128, (byte)128, (byte)128) })
+{
+    var hsv = ColorMath.ToHsv(rgb.Item1, rgb.Item2, rgb.Item3);
+    Check(ColorMath.FromHsv(hsv.Hue, hsv.Saturation, hsv.Value) == rgb, "RGB / HSV round trip");
+}
 UsageSummary ParseUsage(string json) { using var document = JsonDocument.Parse(json); return UsageSummary.Parse(document.RootElement); }
 Check(ParseUsage("""{"summary":{"lifetimeTokens":290237562}}""").LifetimeTokens == 290237562, "Lifetime tokens preserve exact value");
 Check(ParseUsage("""{"summary":{"lifetimeTokens":5000000000}}""").LifetimeTokens == 5000000000, "Lifetime tokens support 64-bit totals");
@@ -85,10 +95,11 @@ foreach (string json in new[] { "{}", """{"rateLimitsByLimitId":{"other":{"prima
     try { Parse(json); throw new Exception("An unavailable quota must fail"); } catch (InvalidDataException) { checks++; }
 }
 string testFile = Path.Combine(AppContext.BaseDirectory, "settings-tests", "settings.json");
-var preferences = new WidgetSettings { Width = 300, Topmost = true, RememberMe = false, SessionMode = "widget", RefreshMinutes = 30, Theme = "Light" };
+var preferences = new WidgetSettings { Width = 300, Topmost = true, RememberMe = false, SessionMode = "widget", RefreshMinutes = 30, Theme = "Light", Accent = "#123456", ChatGptAccent = "#ABCDEF" };
 preferences.Save(testFile);
 var loaded = WidgetSettings.Load(testFile);
 Check(loaded.Width == 300 && loaded.Topmost && loaded.Theme == "Light", "Appearance survives save and reload");
+Check(loaded.Accent == "#123456" && loaded.ChatGptAccent == "#ABCDEF", "Codex and ChatGPT accents save independently");
 Check(!loaded.RememberMe && loaded.SessionMode == "widget" && loaded.RefreshMinutes == 30, "Account preferences and interval survive save and reload");
 Check(!File.Exists(testFile + ".tmp"), "Atomic save leaves no unfinished file");
 File.WriteAllText(testFile, "invalid JSON");

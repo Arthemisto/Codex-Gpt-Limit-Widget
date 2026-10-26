@@ -55,13 +55,9 @@ public sealed class SettingsWindow : Window
         var interval = new Slider { Minimum = 0, Maximum = 5, TickFrequency = 1, IsSnapToTickEnabled = true, TickPlacement = System.Windows.Controls.Primitives.TickPlacement.BottomRight, Value = Array.IndexOf(intervals, widget.RefreshMinutes), Margin = new Thickness(0, 8, 0, 0) };
         interval.ValueChanged += (_, _) => { widget.RefreshMinutes = intervals[(int)interval.Value]; intervalLabel.Text = $"Every {widget.RefreshMinutes} minutes"; }; panel.Children.Add(interval);
         var ticks = new Grid(); for (int i = 0; i < intervals.Length; i++) { ticks.ColumnDefinitions.Add(new ColumnDefinition()); var label = new TextBlock { Text = $"{intervals[i]}m", FontSize = 12, HorizontalAlignment = HorizontalAlignment.Center }; Grid.SetColumn(label, i); ticks.Children.Add(label); } panel.Children.Add(ticks);
-        Heading("Accent palette"); var colors = Row();
-        foreach (string hex in new[] { "#39DFB5", "#318CFF", "#AB55F5", "#FFC44D" })
-        {
-            var color = (Color)ColorConverter.ConvertFromString(hex);
-            var button = new Button { Width = 44, Height = 30, Background = new SolidColorBrush(color), ToolTip = hex };
-            button.Click += (_, _) => { widget.AccentColor = color; widget.RefreshView(); }; colors.Children.Add(button);
-        }
+        Heading("Accent colors"); var colors = new UniformGrid { Columns = 2 }; panel.Children.Add(colors);
+        AddColorPicker(colors, "Codex", () => widget.AccentColor, color => widget.AccentColor = color);
+        AddColorPicker(colors, "ChatGPT", () => widget.ChatGptAccentColor, color => widget.ChatGptAccentColor = color);
         Heading("Show"); var visibleOptions = new UniformGrid { Columns = 2 }; panel.Children.Add(visibleOptions);
         Check("Codex limits", widget.ShowCodex, value => { widget.ShowCodex = value; widget.RefreshView(); }, visibleOptions);
         visibleOptions.Children.Add(new CheckBox { Content = "ChatGPT · V2", IsEnabled = false, ToolTip = "ChatGPT chat quotas require a separate integration." });
@@ -121,6 +117,18 @@ public sealed class SettingsWindow : Window
     Button AccountButton(string title, Func<Task> action, Panel? destination = null)
     {
         var button = new Button { Content = title }; button.Click += async (_, _) => await action(); accountButtons.Add(button); (destination ?? panel).Children.Add(button); return button;
+    }
+    void AddColorPicker(Panel parent, string name, Func<Color> getColor, Action<Color> setColor)
+    {
+        var swatch = new Border { Width = 20, Height = 20, CornerRadius = new CornerRadius(4), Background = new SolidColorBrush(getColor()), Margin = new Thickness(0, 0, 7, 0) };
+        var content = new StackPanel { Orientation = Orientation.Horizontal }; content.Children.Add(swatch); content.Children.Add(new TextBlock { Text = name, VerticalAlignment = VerticalAlignment.Center });
+        var button = new Button { Content = content, ToolTip = "Choose hue, saturation, brightness or RGB / HEX" };
+        button.Click += (_, _) =>
+        {
+            var picker = new ColorPickerWindow($"{name} accent", getColor()) { Owner = this };
+            if (picker.ShowDialog() == true) { setColor(picker.SelectedColor); swatch.Background = new SolidColorBrush(picker.SelectedColor); widget.RefreshView(); }
+        };
+        parent.Children.Add(button);
     }
     void Heading(string text, double size = 14) => panel.Children.Add(new TextBlock { Text = text, FontSize = size, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 7, 0, 4) });
     void Note(string text) { var note = new TextBlock { Text = text, FontSize = 12, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 3, 0, 2) }; note.SetResourceReference(TextBlock.ForegroundProperty, "Muted"); panel.Children.Add(note); }

@@ -9,7 +9,7 @@ A compact Windows desktop widget for Codex subscription limits, built with C# an
 - Last successful update time, manual refresh, and automatic refresh every 1 / 5 / 10 / 15 / 30 / 60 minutes (10 by default).
 - Preserve the latest values on request failures and mark them stale. Unknown quotas display a dash, never an invented percentage.
 - Light, dark, and transparent adaptive themes. Adaptive colors follow Windows light/dark preferences; background opacity is adjustable. Native background blur is not included.
-- Accent palette, three widget sizes, visibility options, always-on-top and position lock.
+- Independent Codex and ChatGPT accent colors, with a hue spectrum, saturation/brightness plane and RGB/HEX entry. Three widget sizes, visibility options, always-on-top and position lock.
 - Save settings, remember window position, recover an off-screen window, launch Codex, and optional Windows startup registration.
 - Tray menu, hide/restore, and single-instance behavior.
 - The Codex helper exits between polls for existing or remembered logins. Only an ephemeral login keeps it running to retain its in-memory session.

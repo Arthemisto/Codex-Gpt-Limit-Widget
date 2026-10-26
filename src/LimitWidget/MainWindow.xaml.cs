@@ -29,6 +29,7 @@ public partial class MainWindow : Window
     public bool ShowCodex = true, Locked, RememberMe = true, ShowUpdated = true, ShowCountdown = true, ShowLaunch = true;
     public string Theme = "Dark", SessionMode = "existing";
     public Color AccentColor = Color.FromRgb(57, 223, 181);
+    public Color ChatGptAccentColor = Color.FromRgb(171, 85, 245);
     public double GlassOpacity = 0.8;
     public int RefreshMinutes = 10;
     public bool Busy => busy;
@@ -51,6 +52,8 @@ public partial class MainWindow : Window
         SessionMode = saved.SessionMode == "widget" ? "widget" : "existing";
         Theme = saved.Theme is "Light" or "Dark" or "Adaptive glass" ? saved.Theme : "Dark";
         try { if (!string.IsNullOrWhiteSpace(saved.Accent)) AccentColor = (Color)ColorConverter.ConvertFromString(saved.Accent); }
+        catch (Exception e) when (e is FormatException or NotSupportedException or ArgumentException) { }
+        try { if (!string.IsNullOrWhiteSpace(saved.ChatGptAccent)) ChatGptAccentColor = (Color)ColorConverter.ConvertFromString(saved.ChatGptAccent); }
         catch (Exception e) when (e is FormatException or NotSupportedException or ArgumentException) { }
         GlassOpacity = double.IsFinite(saved.Opacity) ? Math.Clamp(saved.Opacity, 0.2, 1) : 0.8;
         RefreshMinutes = new[] { 1, 5, 10, 15, 30, 60 }.Contains(saved.RefreshMinutes) ? saved.RefreshMinutes : 10;
@@ -96,7 +99,7 @@ public partial class MainWindow : Window
     public void SaveSettings() => new WidgetSettings
     {
         ShowCodex = ShowCodex, Locked = Locked, Topmost = Topmost, Theme = Theme,
-        Accent = AccentColor.ToString(), Width = Width, Opacity = GlassOpacity, RefreshMinutes = RefreshMinutes,
+        Accent = AccentColor.ToString(), ChatGptAccent = ChatGptAccentColor.ToString(), Width = Width, Opacity = GlassOpacity, RefreshMinutes = RefreshMinutes,
         RememberMe = RememberMe, SessionMode = SessionMode, ShowUpdated = ShowUpdated, ShowCountdown = ShowCountdown, ShowLaunch = ShowLaunch
     }.Save();
 
