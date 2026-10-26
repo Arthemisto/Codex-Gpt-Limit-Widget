@@ -4,8 +4,8 @@
    <Grid MouseLeftButtonDown="DragHeader" Background="Transparent" Margin="0,0,0,10">
     <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
     <Border x:Name="ConnectionBadge" CornerRadius="6" Padding="6,4" HorizontalAlignment="Left" VerticalAlignment="Center" Background="#DDE5EC"><TextBlock x:Name="ConnectionLabel" Text="Connecting" FontSize="11" FontWeight="Bold" Foreground="Black"/></Border>
-    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"><Button x:Name="TopButton" Click="ToggleTop" ToolTip="Always on top" FontSize="12" FontWeight="Bold" Foreground="Black" Padding="6,5"/><Button Content="⚙" Click="OpenSettings" ToolTip="Settings" Padding="6,5"/><Button Content="×" Click="CloseWidget" ToolTip="Hide to tray" Padding="6,5"/></StackPanel>
-    <DockPanel Grid.Row="1" Margin="0,4,0,0"><Button x:Name="RefreshButton" DockPanel.Dock="Right" Content="↻" Click="RefreshClicked" ToolTip="Refresh Codex limits" Padding="6,2" HorizontalAlignment="Right"/><TextBlock x:Name="UpdatedLabel" Text="Not updated yet" FontSize="12" Foreground="{DynamicResource Muted}" VerticalAlignment="Center"/></DockPanel>
+    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"><Button x:Name="TopButton" Click="ToggleTop" ToolTip="Always on top" FontSize="12" FontWeight="Bold" Foreground="Black" Padding="6,5"/><Button Content="⚙" FontWeight="Normal" Click="OpenSettings" ToolTip="Settings" Padding="6,5"/><Button Content="×" Click="CloseWidget" ToolTip="Hide to tray" Padding="6,5"/></StackPanel>
+    <DockPanel Grid.Row="1" Margin="0,4,0,0"><Button x:Name="RefreshButton" DockPanel.Dock="Right" Content="↻" FontWeight="Normal" Click="RefreshClicked" ToolTip="Refresh Codex limits" Padding="6,2" HorizontalAlignment="Right"/><TextBlock x:Name="UpdatedLabel" Text="Not updated yet" FontSize="12" Foreground="{DynamicResource Muted}" VerticalAlignment="Center"/></DockPanel>
    </Grid>
    <Border Height="1" Background="{DynamicResource Line}"/>
    <StackPanel x:Name="QuotaRows"/>
