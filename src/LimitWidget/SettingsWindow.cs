@@ -5,14 +5,15 @@ namespace LimitWidget;
 public sealed class SettingsWindow : Window
 {
  readonly MainWindow widget;
- readonly StackPanel panel = new() { Margin = new Thickness(24) };
+ readonly StackPanel panel = new() { Margin = new Thickness(16, 10, 16, 12) };
  public SettingsWindow(MainWindow widget)
  {
-  this.widget = widget; Title = "Settings — Prototype"; Width = 440; Height = 720; MinWidth = 400; MinHeight = 400;
+  this.widget = widget; Title = "Settings — Prototype"; Width = 390; Height = 650; MinWidth = 370; MinHeight = 400;
+  Resources.Add(typeof(CheckBox), new Style(typeof(CheckBox), (Style)Application.Current.FindResource(typeof(CheckBox))) { Setters = { new Setter(MarginProperty, new Thickness(0, 4, 0, 4)), new Setter(FontSizeProperty, 13d) } });
   FontFamily = new FontFamily("Segoe UI"); WindowStartupLocation = WindowStartupLocation.CenterOwner;
   SetResourceReference(BackgroundProperty, "Surface");
   Content = new ScrollViewer { Content = panel, VerticalScrollBarVisibility = ScrollBarVisibility.Auto };
-  Heading("Settings", 25); Heading("Refresh interval");
+  Heading("Settings", 22); Heading("Refresh interval");
   int[] intervals = { 1, 5, 10, 15, 30, 60 };
   var intervalLabel = new TextBlock { Text = $"Every {widget.RefreshMinutes} minutes" }; panel.Children.Add(intervalLabel);
   var interval = new Slider { Minimum = 0, Maximum = 5, TickFrequency = 1, IsSnapToTickEnabled = true, TickPlacement = System.Windows.Controls.Primitives.TickPlacement.BottomRight, Value = Array.IndexOf(intervals, widget.RefreshMinutes), Margin = new Thickness(0, 10, 0, 0) };
@@ -29,7 +30,7 @@ public sealed class SettingsWindow : Window
   Heading("Show limits"); Check("Codex", widget.ShowCodex, value => { widget.ShowCodex = value; widget.RefreshView(); });
   Check("ChatGPT · V2 preview", widget.ShowGpt, value => { widget.ShowGpt = value; widget.RefreshView(); });
   Heading("Widget size"); var sizes = Row();
-  foreach (var size in new[] { ("S", 330d), ("M", 390d), ("L", 450d) })
+  foreach (var size in new[] { ("S", 300d), ("M", 340d), ("L", 390d) })
   {
    var button = new Button { Content = size.Item1, Width = 90 }; button.Click += (_, _) => widget.SetWidgetSize(size.Item2); sizes.Children.Add(button);
   }
@@ -39,7 +40,7 @@ public sealed class SettingsWindow : Window
   Heading("Theme"); var themes = Row();
   foreach (string theme in new[] { "Light", "Dark", "Adaptive glass" })
   {
-   var button = new Button { Content = theme, Padding = new Thickness(10, 12, 10, 12) }; button.Click += (_, _) => { widget.Theme = theme; widget.RefreshView(); }; themes.Children.Add(button);
+   var button = new Button { Content = theme, Padding = new Thickness(9, 8, 9, 8) }; button.Click += (_, _) => { widget.Theme = theme; widget.RefreshView(); }; themes.Children.Add(button);
   }
   Heading("Glass background opacity");
   var opacityLabel = new TextBlock { Text = $"{widget.GlassOpacity:P0} · Adaptive glass only" }; panel.Children.Add(opacityLabel);
@@ -57,8 +58,8 @@ public sealed class SettingsWindow : Window
   panel.Children.Add(save);
   Note("Changes preview immediately. Save keeps them for the next launch.");
  }
- void Heading(string text, double size = 14) => panel.Children.Add(new TextBlock { Text = text, FontSize = size, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 16, 0, 10) });
- void Note(string text) { var note = new TextBlock { Text = text, FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 8, 0, 4) }; note.SetResourceReference(TextBlock.ForegroundProperty, "Muted"); panel.Children.Add(note); }
+ void Heading(string text, double size = 14) => panel.Children.Add(new TextBlock { Text = text, FontSize = size, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 10, 0, 6) });
+ void Note(string text) { var note = new TextBlock { Text = text, FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 5, 0, 2) }; note.SetResourceReference(TextBlock.ForegroundProperty, "Muted"); panel.Children.Add(note); }
  StackPanel Row() { var row = new StackPanel { Orientation = Orientation.Horizontal }; panel.Children.Add(row); return row; }
  void Check(string label, bool initial, Action<bool> action) { var box = new CheckBox { Content = label, IsChecked = initial }; box.Checked += (_, _) => action(true); box.Unchecked += (_, _) => action(false); panel.Children.Add(box); }
 }

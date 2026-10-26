@@ -1,15 +1,17 @@
-<Window x:Class="LimitWidget.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="Codex Limit Widget — Prototype" Width="390" SizeToContent="Height" ResizeMode="NoResize" WindowStyle="None" AllowsTransparency="True" Background="Transparent" FontFamily="Segoe UI" WindowStartupLocation="CenterScreen">
- <Border Background="{DynamicResource Surface}" BorderBrush="{DynamicResource Line}" BorderThickness="1" CornerRadius="16" Padding="20">
+<Window x:Class="LimitWidget.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="Codex Limit Widget — Prototype" Width="340" SizeToContent="Height" ResizeMode="NoResize" WindowStyle="None" AllowsTransparency="True" Background="Transparent" FontFamily="Segoe UI" WindowStartupLocation="CenterScreen">
+ <Border Background="{DynamicResource Surface}" BorderBrush="{DynamicResource Line}" BorderThickness="1" CornerRadius="14" Padding="14">
   <StackPanel>
-   <Grid MouseLeftButtonDown="DragHeader" Background="Transparent" Margin="0,0,0,14">
-    <StackPanel><TextBlock Text="DEMO · NOT CONNECTED" FontSize="10" Foreground="{DynamicResource Accent}"/><TextBlock Text="Sample data · no account access" FontSize="12" Foreground="{DynamicResource Muted}" Margin="0,5,0,0"/></StackPanel>
-    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"><Button Content="⚙" Click="OpenSettings" ToolTip="Settings"/><Button Content="×" Click="CloseWidget" ToolTip="Exit prototype"/></StackPanel>
+   <Grid MouseLeftButtonDown="DragHeader" Background="Transparent" Margin="0,0,0,10">
+    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+    <TextBlock Text="DEMO · NOT CONNECTED" FontSize="9" VerticalAlignment="Center" Foreground="{DynamicResource Accent}"/>
+    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"><Button x:Name="TopButton" Click="ToggleTop" ToolTip="Always on top" FontSize="11" Padding="6,5"/><Button Content="⚙" Click="OpenSettings" ToolTip="Settings" Padding="6,5"/><Button Content="×" Click="CloseWidget" ToolTip="Exit prototype" Padding="6,5"/></StackPanel>
+    <DockPanel Grid.Row="1" Margin="0,5,0,0"><Button DockPanel.Dock="Right" Content="↻" Click="RefreshDemo" ToolTip="Refresh sample data" Padding="6,2" HorizontalAlignment="Right"/><TextBlock x:Name="UpdatedLabel" FontSize="10" Foreground="{DynamicResource Muted}" VerticalAlignment="Center"/></DockPanel>
    </Grid>
    <Border Height="1" Background="{DynamicResource Line}"/>
    <StackPanel x:Name="QuotaRows"/>
    <TextBlock x:Name="EmptyHint" Text="Select a service in Settings" Margin="0,24" HorizontalAlignment="Center" Visibility="Collapsed"/>
-   <Border Height="1" Background="{DynamicResource Line}" Margin="0,14,0,14"/>
-   <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><Button x:Name="LaunchButton" Content="▶  Launch Codex" Background="{DynamicResource Accent}" Foreground="#10231F" Click="LaunchCodex"/><Button x:Name="TopButton" Grid.Column="1" Click="ToggleTop" ToolTip="Always on top" Padding="9,8"/><Button x:Name="LockButton" Grid.Column="2" Click="ToggleLock" Padding="9,8"/></Grid>
+   <Border Height="1" Background="{DynamicResource Line}" Margin="0,10,0,10"/>
+   <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><Button x:Name="LaunchButton" Content="▶  Launch Codex" Background="{DynamicResource Accent}" Foreground="#10231F" Click="LaunchCodex"/><Button x:Name="LockButton" Grid.Column="1" Click="ToggleLock" Padding="9,8"/></Grid>
   </StackPanel>
  </Border>
 </Window>

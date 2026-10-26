@@ -9,7 +9,7 @@ public sealed class WidgetSettings
  public bool Topmost { get; set; }
  public string Theme { get; set; } = "Dark";
  public string Accent { get; set; } = "#39DFB5";
- public double Width { get; set; } = 390;
+ public double Width { get; set; } = 340;
  public double Opacity { get; set; } = 0.8;
  public int RefreshMinutes { get; set; } = 10;
  static string FilePath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "CodexGptLimitWidget", "settings.json");

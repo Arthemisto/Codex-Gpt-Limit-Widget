@@ -2,10 +2,18 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
+using System.Diagnostics;
 namespace LimitWidget;
 public partial class MainWindow : Window
 {
  SettingsWindow? settings;
+ readonly DispatcherTimer updateTimer = new() { Interval = TimeSpan.FromSeconds(15) };
+ readonly Stopwatch sinceRefresh = new();
+ readonly DateTimeOffset demoShortReset = DateTimeOffset.UtcNow.AddHours(2).AddMinutes(14);
+ readonly DateTimeOffset demoWeeklyReset = DateTimeOffset.UtcNow.AddDays(3).AddHours(8);
+ readonly List<(TextBlock Label, DateTimeOffset Reset)> countdowns = new();
+ DateTimeOffset? lastUpdated;
  public bool ShowCodex = true, ShowGpt, Locked;
  public string Theme = "Dark";
  public Color AccentColor = Color.FromRgb(57, 223, 181);
@@ -20,13 +28,21 @@ public partial class MainWindow : Window
   try { AccentColor = (Color)ColorConverter.ConvertFromString(saved.Accent); } catch (Exception e) when (e is FormatException or NotSupportedException) { }
   GlassOpacity = double.IsFinite(saved.Opacity) ? Math.Clamp(saved.Opacity, 0.2, 1) : 0.8;
   RefreshMinutes = new[] { 1, 5, 10, 15, 30, 60 }.Contains(saved.RefreshMinutes) ? saved.RefreshMinutes : 10;
-  SetWidgetSize(double.IsFinite(saved.Width) ? Math.Clamp(saved.Width, 330, 450) : 390);
+  SetWidgetSize(double.IsFinite(saved.Width) ? Math.Clamp(saved.Width, 300, 390) : 340);
   RefreshView();
+  UpdateDemoSnapshot();
+  updateTimer.Tick += (_, _) =>
+  {
+   if (sinceRefresh.Elapsed >= TimeSpan.FromMinutes(RefreshMinutes)) UpdateDemoSnapshot();
+   UpdateCountdowns();
+  };
+  updateTimer.Start();
+  Closed += (_, _) => updateTimer.Stop();
  }
  public void SetWidgetSize(double width)
  {
   Width = width;
-  ((FrameworkElement)Content).LayoutTransform = new ScaleTransform(width / 390, width / 390);
+  ((FrameworkElement)Content).LayoutTransform = new ScaleTransform(width / 340, width / 340);
  }
  public void SaveSettings() => new WidgetSettings { ShowCodex = ShowCodex, ShowGpt = ShowGpt, Locked = Locked, Topmost = Topmost, Theme = Theme, Accent = AccentColor.ToString(), Width = Width, Opacity = GlassOpacity, RefreshMinutes = RefreshMinutes }.Save();
  public void RefreshView()
@@ -38,24 +54,44 @@ public partial class MainWindow : Window
   Application.Current.Resources["Line"] = new SolidColorBrush(light ? Color.FromRgb(202, 211, 219) : Color.FromRgb(70, 82, 91));
   Application.Current.Resources["Accent"] = new SolidColorBrush(AccentColor);
   QuotaRows.Children.Clear();
+  countdowns.Clear();
   if (ShowCodex) AddService("CODEX", 72, 46, new SolidColorBrush(AccentColor));
   if (ShowGpt) AddService("CHATGPT · V2 PREVIEW", 81, 63, new SolidColorBrush(Color.FromRgb(171, 85, 245)));
   EmptyHint.Visibility = ShowCodex || ShowGpt ? Visibility.Collapsed : Visibility.Visible;
   LockButton.Content = Locked ? "🔒 Locked" : "🔓 Move";
-  TopButton.Content = Topmost ? "↑ On" : "↑ Off";
+  TopButton.Content = Topmost ? "↑ On top" : "↓ On top";
+  TopButton.SetResourceReference(Button.ForegroundProperty, Topmost ? "Accent" : "Foreground");
+  UpdateCountdowns();
+ }
+ void UpdateDemoSnapshot()
+ {
+  lastUpdated = DateTimeOffset.Now;
+  sinceRefresh.Restart();
+  UpdatedLabel.Text = $"Demo updated {lastUpdated.Value:HH:mm}";
+  UpdatedLabel.ToolTip = $"Sample data refreshed {lastUpdated.Value:yyyy-MM-dd HH:mm:ss zzz}. No account request was made.";
+ }
+ void RefreshDemo(object sender, RoutedEventArgs e) { UpdateDemoSnapshot(); UpdateCountdowns(); }
+ void UpdateCountdowns()
+ {
+  foreach (var (label, reset) in countdowns)
+  {
+   var remaining = reset - DateTimeOffset.UtcNow;
+   label.Text = remaining <= TimeSpan.Zero ? "Reset due · demo" : remaining.TotalDays >= 1 ? $"Resets in {(int)remaining.TotalDays}d {remaining.Hours:00}h" : $"Resets in {(int)remaining.TotalHours}h {remaining.Minutes:00}m";
+  }
  }
  void AddService(string title, double first, double second, Brush color)
  {
-  var section = new StackPanel { Margin = new Thickness(0, 16, 0, 0) };
+  var section = new StackPanel { Margin = new Thickness(0, 12, 0, 0) };
   section.Children.Add(new TextBlock { Text = title, FontSize = 12, Margin = new Thickness(2, 0, 0, 10) });
   var grid = new Grid(); grid.ColumnDefinitions.Add(new ColumnDefinition()); grid.ColumnDefinitions.Add(new ColumnDefinition());
   for (int i = 0; i < 2; i++)
   {
    var cell = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center };
-   cell.Children.Add(new QuotaRing { Width = 136, Height = 136, Percent = i == 0 ? first : second, RingBrush = color });
+   cell.Children.Add(new QuotaRing { Width = 112, Height = 112, Percent = i == 0 ? first : second, RingBrush = color });
    cell.Children.Add(new TextBlock { Text = i == 0 ? "Current window" : "Weekly", FontWeight = FontWeights.SemiBold, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 8, 0, 0) });
    var reset = new TextBlock { Text = i == 0 ? "Resets in 2h 14m" : "Resets in 3d 08h", FontSize = 11, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 5, 0, 0) };
    reset.SetResourceReference(TextBlock.ForegroundProperty, "Muted"); cell.Children.Add(reset);
+   countdowns.Add((reset, i == 0 ? demoShortReset : demoWeeklyReset));
    Grid.SetColumn(cell, i); grid.Children.Add(cell);
   }
   section.Children.Add(grid); QuotaRows.Children.Add(section);
