@@ -26,6 +26,15 @@ internal static class WindowsIntegration
 
     public static void LaunchCodex() => Process.Start(new ProcessStartInfo("codex://") { UseShellExecute = true });
 
+    public static void HideFromTaskSwitcher(Window window)
+    {
+        var handle = new WindowInteropHelper(window).Handle;
+        const int extendedStyle = -20;
+        const long toolWindow = 0x80, appWindow = 0x40000;
+        long style = GetWindowLongPtr(handle, extendedStyle).ToInt64();
+        SetWindowLongPtr(handle, extendedStyle, new IntPtr((style | toolWindow) & ~appWindow));
+    }
+
     public static bool SystemLightTheme()
     {
         using var key = Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize");
@@ -48,6 +57,8 @@ internal static class WindowsIntegration
     [StructLayout(LayoutKind.Sequential)] struct Rect { public int Left, Top, Right, Bottom; }
     [StructLayout(LayoutKind.Sequential)] struct MonitorInfo { public int Size; public Rect Monitor, Work; public uint Flags; }
     [DllImport("user32.dll")] static extern bool GetWindowRect(IntPtr window, out Rect rectangle);
+    [DllImport("user32.dll", EntryPoint = "GetWindowLongPtrW")] static extern IntPtr GetWindowLongPtr(IntPtr window, int index);
+    [DllImport("user32.dll", EntryPoint = "SetWindowLongPtrW")] static extern IntPtr SetWindowLongPtr(IntPtr window, int index, IntPtr value);
     [DllImport("user32.dll")] static extern IntPtr MonitorFromRect(ref Rect rectangle, uint flags);
     [DllImport("user32.dll", CharSet = CharSet.Auto)] static extern bool GetMonitorInfo(IntPtr monitor, ref MonitorInfo info);
     [DllImport("user32.dll")] static extern bool SetWindowPos(IntPtr window, IntPtr after, int x, int y, int width, int height, uint flags);

@@ -46,6 +46,7 @@ public partial class MainWindow : Window
     {
         this.smokeTest = smokeTest;
         InitializeComponent();
+        SourceInitialized += (_, _) => WindowsIntegration.HideFromTaskSwitcher(this);
         var iconUri = new Uri("pack://application:,,,/Assets/app.ico");
         Icon = System.Windows.Media.Imaging.BitmapFrame.Create(iconUri);
         var saved = smokeTest ? new WidgetSettings() : WidgetSettings.Load();
