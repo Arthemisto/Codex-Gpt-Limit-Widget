@@ -21,6 +21,7 @@ public sealed class SettingsWindow : Window
     readonly CheckBox remember;
     readonly CheckBox topmost;
     readonly CheckBox locked;
+    readonly StackPanel glassOptions = new();
 
     public SettingsWindow(MainWindow widget)
     {
@@ -82,10 +83,11 @@ public sealed class SettingsWindow : Window
         {
             var button = new Button { Content = theme, Padding = new Thickness(9, 8, 9, 8) }; button.Click += (_, _) => { widget.Theme = theme; widget.RefreshView(); }; themes.Children.Add(button);
         }
-        Heading("Glass background opacity");
-        var opacityLabel = new TextBlock { Text = $"{widget.GlassOpacity:P0} · Adaptive glass only" }; panel.Children.Add(opacityLabel);
+        panel.Children.Add(glassOptions);
+        glassOptions.Children.Add(new TextBlock { Text = "Glass background opacity", FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 10, 0, 4) });
+        var opacityLabel = new TextBlock { Text = $"{widget.GlassOpacity:P0}" }; glassOptions.Children.Add(opacityLabel);
         var opacity = new Slider { Minimum = 20, Maximum = 100, Value = widget.GlassOpacity * 100, TickFrequency = 5, IsSnapToTickEnabled = true, Margin = new Thickness(0, 8, 0, 0) };
-        opacity.ValueChanged += (_, _) => { widget.GlassOpacity = opacity.Value / 100; opacityLabel.Text = $"{widget.GlassOpacity:P0} · Adaptive glass only"; widget.RefreshView(); }; panel.Children.Add(opacity);
+        opacity.ValueChanged += (_, _) => { widget.GlassOpacity = opacity.Value / 100; opacityLabel.Text = $"{widget.GlassOpacity:P0}"; widget.RefreshView(); }; glassOptions.Children.Add(opacity);
         Heading("Windows");
         startup = Check("Launch at startup", WindowsIntegration.IsStartupEnabled(), _ => { });
         topmost = Check("Always on top", widget.Topmost, value => { widget.Topmost = value; widget.RefreshView(); });
@@ -99,6 +101,7 @@ public sealed class SettingsWindow : Window
 
     void UpdateAccount()
     {
+        glassOptions.Visibility = widget.Theme == "Adaptive glass" ? Visibility.Visible : Visibility.Collapsed;
         accountStatus.Text = widget.AccountStatus;
         tokenValue.Text = widget.TokenUsage?.DisplayValue ?? "—";
         tokenCaption.Text = widget.UsageUnavailable ? "Currently unavailable" : "Lifetime · account service";
