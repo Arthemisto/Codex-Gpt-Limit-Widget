@@ -120,6 +120,7 @@ public partial class MainWindow : Window
         if (ShowCodex) AddService();
         EmptyHint.Visibility = ShowCodex ? Visibility.Collapsed : Visibility.Visible;
         LaunchButton.Visibility = ShowLaunch ? Visibility.Visible : Visibility.Collapsed;
+        LaunchDivider.Visibility = LaunchButton.Visibility;
         UpdatedLabel.Visibility = ShowUpdated ? Visibility.Visible : Visibility.Collapsed;
         LockButton.Content = Locked ? "🔒 Locked" : "🔓 Move";
         TopButton.Content = Topmost ? "↑ On top" : "↓ On top";
