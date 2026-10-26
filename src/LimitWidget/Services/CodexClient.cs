@@ -73,6 +73,9 @@ public sealed class CodexClient : IDisposable
     public async Task<QuotaSnapshot> ReadLimitsAsync(CancellationToken cancellationToken) =>
         QuotaSnapshot.Parse(await RequestAsync("account/rateLimits/read", new { }, cancellationToken));
 
+    public async Task<UsageSummary> ReadUsageAsync(CancellationToken cancellationToken) =>
+        UsageSummary.Parse(await RequestAsync("account/usage/read", new { }, cancellationToken));
+
     public async Task SignInAsync(Action<Uri> openBrowser, CancellationToken cancellationToken)
     {
         if (SharedSession) throw new InvalidOperationException("Sign-in is only allowed in the widget's isolated session.");

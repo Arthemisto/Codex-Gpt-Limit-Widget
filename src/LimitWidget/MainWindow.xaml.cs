@@ -35,6 +35,9 @@ public partial class MainWindow : Window
     public bool LoginPending => loginCancellation != null;
     public string AccountStatus { get; private set; } = "Connecting…";
     public string LoginMessage { get; private set; } = "";
+    public UsageSummary? TokenUsage { get; private set; }
+    public DateTimeOffset? UsageUpdatedAt { get; private set; }
+    public bool UsageUnavailable { get; private set; }
     public bool OwnSession => SessionMode == "widget";
     internal bool HasLiveQuota => snapshot != null;
 
@@ -114,7 +117,8 @@ public partial class MainWindow : Window
         UpdatedLabel.Visibility = ShowUpdated ? Visibility.Visible : Visibility.Collapsed;
         LockButton.Content = Locked ? "🔒 Locked" : "🔓 Move";
         TopButton.Content = Topmost ? "↑ On top" : "↓ On top";
-        TopButton.SetResourceReference(Button.ForegroundProperty, Topmost ? "Accent" : "Foreground");
+        TopButton.Foreground = Brushes.Black;
+        TopButton.Background = Topmost ? new SolidColorBrush(AccentColor) : new SolidColorBrush(Color.FromRgb(221, 229, 236));
         UpdateCountdowns(); UpdateStatus();
         WidgetStateChanged?.Invoke();
     }
@@ -122,7 +126,8 @@ public partial class MainWindow : Window
     void UpdateStatus()
     {
         bool stale = snapshot != null && (hasError || DateTimeOffset.Now - snapshot.UpdatedAt > TimeSpan.FromMinutes(RefreshMinutes * 2));
-        ConnectionLabel.Text = LoginPending ? "SIGNING IN" : busy ? "UPDATING" : stale ? "STALE DATA" : snapshot != null ? "CODEX · LIVE" : "NOT CONNECTED";
+        ConnectionLabel.Text = LoginPending ? "Signing in" : busy ? "Updating" : stale ? "Stale data" : snapshot != null ? "Signed in" : "Not connected";
+        ConnectionBadge.Background = snapshot != null && !stale ? new SolidColorBrush(AccentColor) : new SolidColorBrush(Color.FromRgb(221, 229, 236));
         UpdatedLabel.Text = snapshot == null ? "Not updated yet" : $"Updated {snapshot.UpdatedAt:HH:mm}{(stale ? " · stale" : "")}";
         UpdatedLabel.ToolTip = snapshot == null ? "No successful quota request yet" : $"Last successful request: {snapshot.UpdatedAt:yyyy-MM-dd HH:mm:ss zzz}";
         StatusLabel.Text = status; StatusLabel.Visibility = string.IsNullOrEmpty(status) ? Visibility.Collapsed : Visibility.Visible;
@@ -146,12 +151,22 @@ public partial class MainWindow : Window
             await EnsureClientAsync();
             if (!await client!.HasAccountAsync(lifetime.Token))
             {
-                snapshot = null; AccountStatus = "Not signed in";
+                snapshot = null; TokenUsage = null; UsageUpdatedAt = null; AccountStatus = "Not signed in";
                 throw new IOException("Sign in from Settings or use an existing Codex login. API-key accounts do not expose subscription limits.");
             }
             AccountStatus = OwnSession ? "Widget account connected" : "Using existing Codex login";
             var result = await client.ReadLimitsAsync(lifetime.Token);
             snapshot = result; hasError = false; status = "";
+            // Optional statistics must never prevent a successful quota refresh.
+            try
+            {
+                using var usageTimeout = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token);
+                usageTimeout.CancelAfter(TimeSpan.FromSeconds(8));
+                TokenUsage = await client.ReadUsageAsync(usageTimeout.Token);
+                UsageUpdatedAt = DateTimeOffset.Now; UsageUnavailable = TokenUsage.LifetimeTokens == null;
+            }
+            catch (Exception e) when (e is IOException or TimeoutException or OperationCanceledException or System.Text.Json.JsonException or InvalidOperationException)
+            { TokenUsage = null; UsageUpdatedAt = null; UsageUnavailable = true; }
         }
         catch (OperationCanceledException) { return; }
         catch (Exception e) when (e is IOException or TimeoutException or InvalidOperationException or System.ComponentModel.Win32Exception or System.Text.Json.JsonException)
@@ -186,7 +201,7 @@ public partial class MainWindow : Window
                 WidgetStateChanged?.Invoke();
             }, loginCancellation.Token);
             if (!await attempt.HasAccountAsync(loginCancellation.Token)) throw new IOException("The browser flow did not establish a ChatGPT session.");
-            client?.Dispose(); client = attempt; SessionMode = "widget"; snapshot = null; signedIn = true;
+            client?.Dispose(); client = attempt; SessionMode = "widget"; snapshot = null; TokenUsage = null; UsageUpdatedAt = null; signedIn = true;
             AccountStatus = "ChatGPT account connected · widget session";
             LoginMessage = RememberMe ? "Signed in. Login is saved in Windows Credential Manager." : "Signed in for this session only.";
             try { SaveSettings(); } catch (Exception e) when (e is IOException or UnauthorizedAccessException) { LoginMessage += " Preferences could not be saved; use Save settings."; }
@@ -209,7 +224,7 @@ public partial class MainWindow : Window
     public async Task UseExistingAsync()
     {
         if (busy) return;
-        client?.Dispose(); client = null; snapshot = null; SessionMode = "existing";
+        client?.Dispose(); client = null; snapshot = null; TokenUsage = null; UsageUpdatedAt = null; LoginMessage = ""; SessionMode = "existing";
         await RefreshLimitsAsync();
     }
 
@@ -227,7 +242,7 @@ public partial class MainWindow : Window
                 await remembered.StartAsync(false, true, lifetime.Token);
                 await remembered.SignOutAsync(lifetime.Token);
             }
-            client?.Dispose(); client = null; snapshot = null; SessionMode = "widget";
+            client?.Dispose(); client = null; snapshot = null; TokenUsage = null; UsageUpdatedAt = null; LoginMessage = ""; SessionMode = "widget";
             AccountStatus = "Disconnected"; status = "Sign in from Settings to connect your widget."; hasError = false;
             SaveSettings();
         }
@@ -257,10 +272,10 @@ public partial class MainWindow : Window
             var window = windows[i];
             var cell = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center };
             cell.Children.Add(new QuotaRing { Width = 112, Height = 112, Percent = window?.RemainingPercent, RingBrush = new SolidColorBrush(AccentColor) });
-            cell.Children.Add(new TextBlock { Text = window?.Label ?? (i == 0 ? "Current window" : "Long window"), FontWeight = FontWeights.SemiBold, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 8, 0, 0) });
+            cell.Children.Add(new TextBlock { Text = window?.Label ?? (i == 0 ? "Current window" : "Long window"), FontSize = 14, FontWeight = FontWeights.SemiBold, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 5, 0, 0) });
             if (ShowCountdown)
             {
-                var reset = new TextBlock { FontSize = 11, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 5, 0, 0) };
+                var reset = new TextBlock { FontSize = 12, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 3, 0, 0) };
                 reset.SetResourceReference(TextBlock.ForegroundProperty, "Muted"); cell.Children.Add(reset);
                 countdowns.Add((reset, window?.ResetsAt));
             }

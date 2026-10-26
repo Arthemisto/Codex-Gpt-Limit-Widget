@@ -5,6 +5,7 @@ A compact Windows desktop widget for Codex subscription limits, built with C# an
 ## Features
 
 - Real remaining percentages and reset countdowns for the quota windows returned by Codex. Window lengths are taken from the service, including 5-hour and weekly windows when present.
+- Lifetime token count in the top-right of Settings, using `account/usage/read`. This is the metric returned by the Codex-backed account service, not a verified total across every ordinary ChatGPT conversation. Missing or unavailable statistics display a dash and never block quota refresh.
 - Last successful update time, manual refresh, and automatic refresh every 1 / 5 / 10 / 15 / 30 / 60 minutes (10 by default).
 - Preserve the latest values on request failures and mark them stale. Unknown quotas display a dash, never an invented percentage.
 - Light, dark, and transparent adaptive themes. Adaptive colors follow Windows light/dark preferences; background opacity is adjustable. Native background blur is not included.

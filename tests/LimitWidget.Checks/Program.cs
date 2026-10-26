@@ -37,6 +37,8 @@ if (args.Contains("--live"))
     await client.StartAsync(true, true, cancellation.Token);
     Console.WriteLine($"ChatGPT-backed Codex session: {await client.HasAccountAsync(cancellation.Token)}");
     var quota = await client.ReadLimitsAsync(cancellation.Token);
+    var usage = await client.ReadUsageAsync(cancellation.Token);
+    Console.WriteLine($"Codex lifetime tokens: {usage.DisplayValue}");
     Console.WriteLine($"Primary: {quota.Primary?.RemainingPercent}% remaining, {quota.Primary?.DurationMinutes} min window");
     Console.WriteLine($"Secondary: {quota.Secondary?.RemainingPercent}% remaining, {quota.Secondary?.DurationMinutes} min window");
     return;
@@ -44,6 +46,12 @@ if (args.Contains("--live"))
 
 int checks = 0;
 void Check(bool condition, string message) { if (!condition) throw new Exception(message); checks++; }
+UsageSummary ParseUsage(string json) { using var document = JsonDocument.Parse(json); return UsageSummary.Parse(document.RootElement); }
+Check(ParseUsage("""{"summary":{"lifetimeTokens":290237562}}""").LifetimeTokens == 290237562, "Lifetime tokens preserve exact value");
+Check(ParseUsage("""{"summary":{"lifetimeTokens":5000000000}}""").LifetimeTokens == 5000000000, "Lifetime tokens support 64-bit totals");
+Check(ParseUsage("""{"summary":{"lifetimeTokens":0}}""").LifetimeTokens == 0, "Reported zero is valid");
+foreach (string json in new[] { "{}", """{"summary":null}""", """{"summary":{"lifetimeTokens":null}}""", """{"summary":{"lifetimeTokens":-1}}""", """{"summary":{"lifetimeTokens":"unknown"}}""", """{"summary":{"lifetimeTokens":1e40}}""" })
+    Check(ParseUsage(json).LifetimeTokens == null, "Unavailable token statistics must not become zero");
 foreach (string value in new[] { "https://auth.openai.com/oauth/authorize?state=sample", "https://chatgpt.com/auth/login", "https://auth0.openai.com/authorize" })
     Check(BrowserLogin.ValidateUrl(value).Scheme == "https", "Official HTTPS login URL allowed");
 foreach (string value in new[] { "http://auth.openai.com/login", "https://auth.openai.com.evil.example/login", "https://user@auth.openai.com/login", "https://auth.openai.com:8443/login", "file:///auth", "https://accounts.google.com/login" })

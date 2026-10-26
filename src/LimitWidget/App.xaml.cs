@@ -27,6 +27,7 @@ public partial class App : Application
             };
         showWait = ThreadPool.RegisterWaitForSingleObject(showEvent, (_, _) => Dispatcher.BeginInvoke(window.ShowWidget), null, Timeout.Infinite, false);
         window.Show();
+        if (e.Args.Contains("--settings")) window.ShowSettings();
     }
     protected override void OnExit(ExitEventArgs e)
     {

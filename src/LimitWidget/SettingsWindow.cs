@@ -1,5 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 
 namespace LimitWidget;
@@ -7,9 +8,12 @@ namespace LimitWidget;
 public sealed class SettingsWindow : Window
 {
     readonly MainWindow widget;
-    readonly StackPanel panel = new() { Margin = new Thickness(16, 10, 16, 12) };
-    readonly TextBlock accountStatus = new() { FontSize = 12, TextWrapping = TextWrapping.Wrap };
-    readonly TextBlock loginMessage = new() { FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 5, 0, 5) };
+    readonly StackPanel panel = new() { Margin = new Thickness(12, 8, 12, 8) };
+    readonly TextBlock accountStatus = new() { FontSize = 13, FontWeight = FontWeights.Bold, Foreground = Brushes.Black, TextWrapping = TextWrapping.Wrap };
+    readonly TextBlock loginMessage = new() { FontSize = 12, FontWeight = FontWeights.Bold, Foreground = Brushes.Black, TextWrapping = TextWrapping.Wrap };
+    readonly Border loginNotice = new() { Background = new SolidColorBrush(Color.FromRgb(221, 229, 236)), CornerRadius = new CornerRadius(6), Padding = new Thickness(7, 5, 7, 5), Margin = new Thickness(0, 3, 0, 3) };
+    readonly TextBlock tokenValue = new() { FontSize = 18, FontWeight = FontWeights.Bold, Text = "—" };
+    readonly TextBlock tokenCaption = new() { FontSize = 11, Text = "Lifetime · account service" };
     readonly List<Button> accountButtons = new();
     readonly Button cancelLogin = new() { Content = "Cancel sign-in" };
     readonly TextBlock saveStatus = new() { FontSize = 11, TextWrapping = TextWrapping.Wrap };
@@ -21,14 +25,14 @@ public sealed class SettingsWindow : Window
     public SettingsWindow(MainWindow widget)
     {
         this.widget = widget; Title = "Settings · Codex Limit Widget"; Width = 390; Height = 650; MinWidth = 370; MinHeight = 400;
-        Resources.Add(typeof(CheckBox), new Style(typeof(CheckBox), (Style)Application.Current.FindResource(typeof(CheckBox))) { Setters = { new Setter(MarginProperty, new Thickness(0, 4, 0, 4)), new Setter(FontSizeProperty, 13d) } });
-        FontFamily = new FontFamily("Segoe UI"); WindowStartupLocation = WindowStartupLocation.CenterOwner;
+        Resources.Add(typeof(CheckBox), new Style(typeof(CheckBox), (Style)Application.Current.FindResource(typeof(CheckBox))) { Setters = { new Setter(MarginProperty, new Thickness(0, 3, 0, 3)), new Setter(FontSizeProperty, 14d) } });
+        FontFamily = new FontFamily("Segoe UI"); FontSize = 14; WindowStartupLocation = WindowStartupLocation.CenterOwner;
         SetResourceReference(BackgroundProperty, "Surface");
         SetResourceReference(ForegroundProperty, "Foreground");
         // Settings stays opaque even when the desktop widget is translucent.
         Background = new SolidColorBrush(widget.Theme == "Light" || widget.Theme == "Adaptive glass" && WindowsIntegration.SystemLightTheme() ? Color.FromRgb(244, 247, 250) : Color.FromRgb(32, 40, 47));
         var root = new DockPanel();
-        var footer = new StackPanel { Margin = new Thickness(16, 8, 16, 12) };
+        var footer = new StackPanel { Margin = new Thickness(12, 4, 12, 8) };
         var save = new Button { Content = "Save settings" };
         save.Click += (_, _) =>
         {
@@ -37,12 +41,20 @@ public sealed class SettingsWindow : Window
         };
         footer.Children.Add(save); footer.Children.Add(saveStatus); DockPanel.SetDock(footer, Dock.Bottom); root.Children.Add(footer);
         root.Children.Add(new ScrollViewer { Content = panel, VerticalScrollBarVisibility = ScrollBarVisibility.Auto }); Content = root;
-        Heading("Settings", 22); Heading("Refresh interval");
+        var header = new Grid { Margin = new Thickness(0, 0, 0, 4) };
+        header.ColumnDefinitions.Add(new ColumnDefinition()); header.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(175) });
+        var heading = new StackPanel();
+        heading.Children.Add(new TextBlock { Text = "Settings", FontSize = 23, FontWeight = FontWeights.Bold, Margin = new Thickness(0, 3, 0, 15) });
+        heading.Children.Add(new TextBlock { Text = "Refresh interval", FontSize = 14, FontWeight = FontWeights.SemiBold }); header.Children.Add(heading);
+        var usage = new StackPanel();
+        usage.Children.Add(new TextBlock { Text = "Total tokens used", FontSize = 13, FontWeight = FontWeights.SemiBold }); usage.Children.Add(tokenValue); usage.Children.Add(tokenCaption);
+        var tokenCard = new Border { Child = usage, CornerRadius = new CornerRadius(8), Padding = new Thickness(9, 6, 9, 6), Margin = new Thickness(5, 0, 0, 0) };
+        tokenCard.SetResourceReference(BackgroundProperty, "ButtonSurface"); Grid.SetColumn(tokenCard, 1); header.Children.Add(tokenCard); panel.Children.Add(header);
         int[] intervals = { 1, 5, 10, 15, 30, 60 };
         var intervalLabel = new TextBlock { Text = $"Every {widget.RefreshMinutes} minutes" }; panel.Children.Add(intervalLabel);
         var interval = new Slider { Minimum = 0, Maximum = 5, TickFrequency = 1, IsSnapToTickEnabled = true, TickPlacement = System.Windows.Controls.Primitives.TickPlacement.BottomRight, Value = Array.IndexOf(intervals, widget.RefreshMinutes), Margin = new Thickness(0, 8, 0, 0) };
         interval.ValueChanged += (_, _) => { widget.RefreshMinutes = intervals[(int)interval.Value]; intervalLabel.Text = $"Every {widget.RefreshMinutes} minutes"; }; panel.Children.Add(interval);
-        var ticks = new Grid(); for (int i = 0; i < intervals.Length; i++) { ticks.ColumnDefinitions.Add(new ColumnDefinition()); var label = new TextBlock { Text = $"{intervals[i]}m", FontSize = 10, HorizontalAlignment = HorizontalAlignment.Center }; Grid.SetColumn(label, i); ticks.Children.Add(label); } panel.Children.Add(ticks);
+        var ticks = new Grid(); for (int i = 0; i < intervals.Length; i++) { ticks.ColumnDefinitions.Add(new ColumnDefinition()); var label = new TextBlock { Text = $"{intervals[i]}m", FontSize = 12, HorizontalAlignment = HorizontalAlignment.Center }; Grid.SetColumn(label, i); ticks.Children.Add(label); } panel.Children.Add(ticks);
         Heading("Accent palette"); var colors = Row();
         foreach (string hex in new[] { "#39DFB5", "#318CFF", "#AB55F5", "#FFC44D" })
         {
@@ -50,25 +62,28 @@ public sealed class SettingsWindow : Window
             var button = new Button { Width = 44, Height = 30, Background = new SolidColorBrush(color), ToolTip = hex };
             button.Click += (_, _) => { widget.AccentColor = color; widget.RefreshView(); }; colors.Children.Add(button);
         }
-        Heading("Show"); Check("Codex limits", widget.ShowCodex, value => { widget.ShowCodex = value; widget.RefreshView(); });
-        panel.Children.Add(new CheckBox { Content = "ChatGPT limits · coming in V2", IsEnabled = false, ToolTip = "ChatGPT chat quotas require a separate integration." });
-        Check("Reset countdown", widget.ShowCountdown, value => { widget.ShowCountdown = value; widget.RefreshView(); });
-        Check("Last updated", widget.ShowUpdated, value => { widget.ShowUpdated = value; widget.RefreshView(); });
-        Check("Launch button", widget.ShowLaunch, value => { widget.ShowLaunch = value; widget.RefreshView(); });
-        Heading("Widget size"); var sizes = Row();
+        Heading("Show"); var visibleOptions = new UniformGrid { Columns = 2 }; panel.Children.Add(visibleOptions);
+        Check("Codex limits", widget.ShowCodex, value => { widget.ShowCodex = value; widget.RefreshView(); }, visibleOptions);
+        visibleOptions.Children.Add(new CheckBox { Content = "ChatGPT · V2", IsEnabled = false, ToolTip = "ChatGPT chat quotas require a separate integration." });
+        Check("Reset countdown", widget.ShowCountdown, value => { widget.ShowCountdown = value; widget.RefreshView(); }, visibleOptions);
+        Check("Last updated", widget.ShowUpdated, value => { widget.ShowUpdated = value; widget.RefreshView(); }, visibleOptions);
+        Check("Launch button", widget.ShowLaunch, value => { widget.ShowLaunch = value; widget.RefreshView(); }, visibleOptions);
+        Heading("Widget size"); var sizes = new UniformGrid { Columns = 3 }; panel.Children.Add(sizes);
         foreach (var size in new[] { ("S", 300d), ("M", 340d), ("L", 390d) })
         {
-            var button = new Button { Content = size.Item1, Width = 90 }; button.Click += (_, _) => widget.SetWidgetSize(size.Item2); sizes.Children.Add(button);
+            var button = new Button { Content = size.Item1 }; button.Click += (_, _) => widget.SetWidgetSize(size.Item2); sizes.Children.Add(button);
         }
-        Heading("Account"); panel.Children.Add(accountStatus); panel.Children.Add(loginMessage);
-        AccountButton("Use existing Codex login", widget.UseExistingAsync);
-        AccountButton("Sign in to ChatGPT", widget.SignInAsync);
-        Note("To use Google, choose Continue with Google on the official sign-in page.");
-        AccountButton("Disconnect widget", widget.DisconnectAsync);
+        Heading("Account"); panel.Children.Add(new Border { Child = accountStatus, CornerRadius = new CornerRadius(6), Background = new SolidColorBrush(Color.FromRgb(221, 229, 236)), Padding = new Thickness(7, 5, 7, 5) });
+        loginNotice.Child = loginMessage; panel.Children.Add(loginNotice);
+        var signIn = AccountButton("Sign in to ChatGPT", widget.SignInAsync); signIn.SetResourceReference(BackgroundProperty, "Accent"); signIn.Foreground = Brushes.Black; signIn.FontWeight = FontWeights.Bold;
+        var connectionActions = new UniformGrid { Columns = 2 }; panel.Children.Add(connectionActions);
+        AccountButton("Use Codex login", widget.UseExistingAsync, connectionActions);
+        AccountButton("Disconnect", widget.DisconnectAsync, connectionActions);
         cancelLogin.Click += (_, _) => widget.CancelSignIn(); panel.Children.Add(cancelLogin);
         remember = Check("Remember next sign-in", widget.RememberMe, value => widget.RememberMe = value);
-        Note("Browser sign-in is isolated from Codex. Remember uses Windows Credential Manager; off keeps the new login in memory. Existing Codex login uses Codex's own storage.");
-        Heading("Theme"); var themes = Row();
+        Note("Google is available on the browser sign-in page. Remember saves the widget login securely.");
+        remember.ToolTip = "Applies to the next browser sign-in. On: Windows Credential Manager. Off: session memory only. Existing Codex login uses its own storage.";
+        Heading("Theme"); var themes = new UniformGrid { Columns = 3 }; panel.Children.Add(themes);
         foreach (string theme in new[] { "Light", "Dark", "Adaptive glass" })
         {
             var button = new Button { Content = theme, Padding = new Thickness(9, 8, 9, 8) }; button.Click += (_, _) => { widget.Theme = theme; widget.RefreshView(); }; themes.Children.Add(button);
@@ -77,13 +92,12 @@ public sealed class SettingsWindow : Window
         var opacityLabel = new TextBlock { Text = $"{widget.GlassOpacity:P0} · Adaptive glass only" }; panel.Children.Add(opacityLabel);
         var opacity = new Slider { Minimum = 20, Maximum = 100, Value = widget.GlassOpacity * 100, TickFrequency = 5, IsSnapToTickEnabled = true, Margin = new Thickness(0, 8, 0, 0) };
         opacity.ValueChanged += (_, _) => { widget.GlassOpacity = opacity.Value / 100; opacityLabel.Text = $"{widget.GlassOpacity:P0} · Adaptive glass only"; widget.RefreshView(); }; panel.Children.Add(opacity);
-        Note("Transparent background; colors follow the Windows light/dark setting. Text stays opaque.");
         Heading("Windows");
         startup = Check("Launch at startup", WindowsIntegration.IsStartupEnabled(), _ => { });
         topmost = Check("Always on top", widget.Topmost, value => { widget.Topmost = value; widget.RefreshView(); });
         locked = Check("Lock position", widget.Locked, value => { widget.Locked = value; widget.RefreshView(); });
         var exit = new Button { Content = "Exit widget" }; exit.Click += (_, _) => widget.ExitWidget(); panel.Children.Add(exit);
-        Note("× hides the widget to tray. Appearance previews immediately; Save keeps it for next launch.");
+        Note("× hides to tray. Save keeps changes for next launch.");
         widget.WidgetStateChanged += UpdateAccount;
         Closed += (_, _) => widget.WidgetStateChanged -= UpdateAccount;
         UpdateAccount();
@@ -92,8 +106,11 @@ public sealed class SettingsWindow : Window
     void UpdateAccount()
     {
         accountStatus.Text = widget.AccountStatus;
+        tokenValue.Text = widget.TokenUsage?.DisplayValue ?? "—";
+        tokenCaption.Text = widget.UsageUnavailable ? "Currently unavailable" : "Lifetime · account service";
+        tokenValue.ToolTip = widget.TokenUsage?.LifetimeTokens is { } total ? $"{total:N0} tokens reported by Codex account service. This is not a verified total for all ChatGPT conversations. Updated {widget.UsageUpdatedAt:HH:mm}." : "The account service has not returned a lifetime token count.";
         loginMessage.Text = widget.LoginMessage;
-        loginMessage.Visibility = string.IsNullOrEmpty(widget.LoginMessage) ? Visibility.Collapsed : Visibility.Visible;
+        loginNotice.Visibility = string.IsNullOrEmpty(widget.LoginMessage) ? Visibility.Collapsed : Visibility.Visible;
         foreach (var button in accountButtons) button.IsEnabled = !widget.Busy;
         cancelLogin.Visibility = widget.LoginPending ? Visibility.Visible : Visibility.Collapsed;
         remember.IsEnabled = !widget.Busy;
@@ -101,15 +118,15 @@ public sealed class SettingsWindow : Window
         if (locked.IsChecked != widget.Locked) locked.IsChecked = widget.Locked;
         Background = new SolidColorBrush(widget.Theme == "Light" || widget.Theme == "Adaptive glass" && WindowsIntegration.SystemLightTheme() ? Color.FromRgb(244, 247, 250) : Color.FromRgb(32, 40, 47));
     }
-    void AccountButton(string title, Func<Task> action)
+    Button AccountButton(string title, Func<Task> action, Panel? destination = null)
     {
-        var button = new Button { Content = title }; button.Click += async (_, _) => await action(); accountButtons.Add(button); panel.Children.Add(button);
+        var button = new Button { Content = title }; button.Click += async (_, _) => await action(); accountButtons.Add(button); (destination ?? panel).Children.Add(button); return button;
     }
-    void Heading(string text, double size = 14) => panel.Children.Add(new TextBlock { Text = text, FontSize = size, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 10, 0, 6) });
-    void Note(string text) { var note = new TextBlock { Text = text, FontSize = 11, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 5, 0, 2) }; note.SetResourceReference(TextBlock.ForegroundProperty, "Muted"); panel.Children.Add(note); }
+    void Heading(string text, double size = 14) => panel.Children.Add(new TextBlock { Text = text, FontSize = size, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 7, 0, 4) });
+    void Note(string text) { var note = new TextBlock { Text = text, FontSize = 12, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 3, 0, 2) }; note.SetResourceReference(TextBlock.ForegroundProperty, "Muted"); panel.Children.Add(note); }
     StackPanel Row() { var row = new StackPanel { Orientation = Orientation.Horizontal }; panel.Children.Add(row); return row; }
-    CheckBox Check(string label, bool initial, Action<bool> action)
+    CheckBox Check(string label, bool initial, Action<bool> action, Panel? destination = null)
     {
-        var box = new CheckBox { Content = label, IsChecked = initial }; box.Checked += (_, _) => action(true); box.Unchecked += (_, _) => action(false); panel.Children.Add(box); return box;
+        var box = new CheckBox { Content = label, IsChecked = initial }; box.Checked += (_, _) => action(true); box.Unchecked += (_, _) => action(false); (destination ?? panel).Children.Add(box); return box;
     }
 }
