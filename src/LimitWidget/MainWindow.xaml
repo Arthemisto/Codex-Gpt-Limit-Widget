@@ -1,0 +1,15 @@
+<Window x:Class="LimitWidget.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="Codex Limit Widget — Prototype" Width="390" SizeToContent="Height" ResizeMode="NoResize" WindowStyle="None" AllowsTransparency="True" Background="Transparent" FontFamily="Segoe UI" WindowStartupLocation="CenterScreen">
+ <Border Background="{DynamicResource Surface}" BorderBrush="{DynamicResource Line}" BorderThickness="1" CornerRadius="16" Padding="20">
+  <StackPanel>
+   <Grid MouseLeftButtonDown="DragHeader" Background="Transparent" Margin="0,0,0,14">
+    <StackPanel><TextBlock Text="DEMO · NOT CONNECTED" FontSize="10" Foreground="{DynamicResource Accent}"/><TextBlock Text="Sample data · no account access" FontSize="12" Foreground="{DynamicResource Muted}" Margin="0,5,0,0"/></StackPanel>
+    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right"><Button Content="⚙" Click="OpenSettings" ToolTip="Settings"/><Button Content="×" Click="CloseWidget" ToolTip="Exit prototype"/></StackPanel>
+   </Grid>
+   <Border Height="1" Background="{DynamicResource Line}"/>
+   <StackPanel x:Name="QuotaRows"/>
+   <TextBlock x:Name="EmptyHint" Text="Select a service in Settings" Margin="0,24" HorizontalAlignment="Center" Visibility="Collapsed"/>
+   <Border Height="1" Background="{DynamicResource Line}" Margin="0,14,0,14"/>
+   <Grid><Button x:Name="LaunchButton" Content="▶  Launch Codex" HorizontalAlignment="Left" Background="{DynamicResource Accent}" Foreground="#10231F" Click="LaunchCodex"/><Button x:Name="LockButton" HorizontalAlignment="Right" Click="ToggleLock"/></Grid>
+  </StackPanel>
+ </Border>
+</Window>

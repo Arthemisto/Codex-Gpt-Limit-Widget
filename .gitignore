@@ -1,0 +1,15 @@
+bin/
+obj/
+.vs/
+*.user
+*.suo
+desktop.ini
+.env
+.env.*
+!.env.example
+auth.json
+.codex/
+logs/
+*.log
+CONCEPT.md
+PROJECT.md
