@@ -27,15 +27,22 @@ public sealed class CodexClient : IDisposable
     public static string? FindExecutable()
     {
         string root = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "OpenAI", "Codex", "bin");
+        return SelectExecutable(root, Environment.GetEnvironmentVariable("PATH") ?? "");
+    }
+
+    internal static string? SelectExecutable(string root, string searchPath)
+    {
         if (Directory.Exists(root))
         {
-            string direct = Path.Combine(root, "codex.exe");
-            if (File.Exists(direct)) return direct;
+            // Desktop updates install the active build in a versioned directory.
+            // A legacy executable may remain in bin itself and lacks newer account/auth APIs.
             string? bundled = Directory.EnumerateDirectories(root).OrderByDescending(Directory.GetLastWriteTimeUtc)
                 .Select(folder => Path.Combine(folder, "codex.exe")).FirstOrDefault(File.Exists);
             if (bundled != null) return bundled;
+            string direct = Path.Combine(root, "codex.exe");
+            if (File.Exists(direct)) return direct;
         }
-        foreach (string folder in (Environment.GetEnvironmentVariable("PATH") ?? "").Split(Path.PathSeparator))
+        foreach (string folder in searchPath.Split(Path.PathSeparator))
         {
             string candidate;
             try { candidate = Path.Combine(folder.Trim('"'), "codex.exe"); } catch (ArgumentException) { continue; }

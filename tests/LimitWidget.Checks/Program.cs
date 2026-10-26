@@ -51,6 +51,16 @@ if (args.Contains("--live"))
 
 int checks = 0;
 void Check(bool condition, string message) { if (!condition) throw new Exception(message); checks++; }
+string executableFixture = Path.Combine(AppContext.BaseDirectory, "executable-tests");
+string bundledRoot = Path.Combine(executableFixture, "bin");
+string versionedRoot = Path.Combine(bundledRoot, "current-version");
+string pathRoot = Path.Combine(executableFixture, "path");
+Directory.CreateDirectory(versionedRoot); Directory.CreateDirectory(pathRoot);
+File.WriteAllText(Path.Combine(bundledRoot, "codex.exe"), "legacy fixture");
+File.WriteAllText(Path.Combine(versionedRoot, "codex.exe"), "current fixture");
+File.WriteAllText(Path.Combine(pathRoot, "codex.exe"), "path fixture");
+Check(CodexClient.SelectExecutable(bundledRoot, pathRoot) == Path.Combine(versionedRoot, "codex.exe"), "Versioned Codex takes precedence over legacy root and PATH");
+Check(CodexClient.SelectExecutable(Path.Combine(executableFixture, "missing"), pathRoot) == Path.Combine(pathRoot, "codex.exe"), "PATH remains a fallback when bundled Codex is absent");
 var lines = new BoundedLineReader(new StringReader("abc\r\n\nlast"), 4);
 Check(await lines.ReadAsync(default) == "abc", "Bounded reader handles CRLF");
 Check(await lines.ReadAsync(default) == "", "Bounded reader preserves empty lines");
