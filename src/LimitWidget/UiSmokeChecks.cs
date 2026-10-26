@@ -57,6 +57,9 @@ internal static class UiSmokeChecks
             results.Add("Off-screen window recovery");
             var settings = new SettingsWindow(window) { Owner = window }; settings.Show();
             await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
+            var settingsBackground = settings.Background;
+            window.RefreshView();
+            if (!ReferenceEquals(settingsBackground, settings.Background)) throw new InvalidOperationException("Account update recreated unchanged settings background.");
             Capture(settings, Path.Combine(outputDirectory, "settings.png")); settings.Close();
             results.Add("Settings open and render");
             var colorPicker = new ColorPickerWindow("Codex accent", window.AccentColor) { Owner = window }; colorPicker.Show();

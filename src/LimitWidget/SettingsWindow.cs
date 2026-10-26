@@ -31,7 +31,7 @@ public sealed class SettingsWindow : Window
         SetResourceReference(BackgroundProperty, "Surface");
         SetResourceReference(ForegroundProperty, "Foreground");
         // Settings stays opaque even when the desktop widget is translucent.
-        Background = new SolidColorBrush(widget.Theme == "Light" || widget.Theme == "Adaptive glass" && WindowsIntegration.SystemLightTheme() ? Color.FromRgb(244, 247, 250) : Color.FromRgb(32, 40, 47));
+        UpdateBackground();
         var root = new DockPanel();
         var footer = new StackPanel { Margin = new Thickness(12, 4, 12, 8) };
         var save = new Button { Content = "Save settings" };
@@ -113,7 +113,14 @@ public sealed class SettingsWindow : Window
         remember.IsEnabled = !widget.Busy;
         if (topmost.IsChecked != widget.Topmost) topmost.IsChecked = widget.Topmost;
         if (locked.IsChecked != widget.Locked) locked.IsChecked = widget.Locked;
-        Background = new SolidColorBrush(widget.Theme == "Light" || widget.Theme == "Adaptive glass" && WindowsIntegration.SystemLightTheme() ? Color.FromRgb(244, 247, 250) : Color.FromRgb(32, 40, 47));
+        UpdateBackground();
+    }
+    void UpdateBackground()
+    {
+        Color color = widget.Theme == "Light" || widget.Theme == "Adaptive glass" && WindowsIntegration.SystemLightTheme()
+            ? Color.FromRgb(244, 247, 250) : Color.FromRgb(32, 40, 47);
+        if (Background is SolidColorBrush existing && existing.Color == color) return;
+        var brush = new SolidColorBrush(color); brush.Freeze(); Background = brush;
     }
     Button AccountButton(string title, Func<Task> action, Panel? destination = null)
     {
