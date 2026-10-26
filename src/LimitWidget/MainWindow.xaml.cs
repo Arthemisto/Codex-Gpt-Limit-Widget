@@ -108,16 +108,21 @@ public partial class MainWindow : Window
         RememberMe = RememberMe, SessionMode = SessionMode, ShowUpdated = ShowUpdated, ShowCountdown = ShowCountdown, ShowLaunch = ShowLaunch
     }.Save();
 
+    static SolidColorBrush FrozenBrush(Color color)
+    {
+        var brush = new SolidColorBrush(color); brush.Freeze(); return brush;
+    }
+
     public void RefreshView()
     {
         bool light = Theme == "Light" || Theme == "Adaptive glass" && WindowsIntegration.SystemLightTheme();
         byte alpha = Theme == "Adaptive glass" ? (byte)Math.Round(GlassOpacity * 255) : (byte)255;
-        Application.Current.Resources["Surface"] = new SolidColorBrush(light ? Color.FromArgb(alpha, 244, 247, 250) : Color.FromArgb(alpha, 32, 40, 47));
-        Application.Current.Resources["Foreground"] = new SolidColorBrush(light ? Color.FromRgb(25, 36, 44) : Color.FromRgb(244, 247, 250));
-        Application.Current.Resources["Muted"] = new SolidColorBrush(light ? Color.FromRgb(79, 96, 110) : Color.FromRgb(168, 181, 192));
-        Application.Current.Resources["Line"] = new SolidColorBrush(light ? Color.FromRgb(202, 211, 219) : Color.FromRgb(70, 82, 91));
-        Application.Current.Resources["Accent"] = new SolidColorBrush(AccentColor);
-        Application.Current.Resources["ButtonSurface"] = new SolidColorBrush(light ? Color.FromRgb(221, 229, 236) : Color.FromRgb(48, 60, 70));
+        Application.Current.Resources["Surface"] = FrozenBrush(light ? Color.FromArgb(alpha, 244, 247, 250) : Color.FromArgb(alpha, 32, 40, 47));
+        Application.Current.Resources["Foreground"] = FrozenBrush(light ? Color.FromRgb(25, 36, 44) : Color.FromRgb(244, 247, 250));
+        Application.Current.Resources["Muted"] = FrozenBrush(light ? Color.FromRgb(79, 96, 110) : Color.FromRgb(168, 181, 192));
+        Application.Current.Resources["Line"] = FrozenBrush(light ? Color.FromRgb(202, 211, 219) : Color.FromRgb(70, 82, 91));
+        Application.Current.Resources["Accent"] = FrozenBrush(AccentColor);
+        Application.Current.Resources["ButtonSurface"] = FrozenBrush(light ? Color.FromRgb(221, 229, 236) : Color.FromRgb(48, 60, 70));
         QuotaRows.Children.Clear(); countdowns.Clear();
         if (ShowCodex) AddService();
         EmptyHint.Visibility = ShowCodex ? Visibility.Collapsed : Visibility.Visible;
@@ -127,7 +132,7 @@ public partial class MainWindow : Window
         LockButton.Content = Locked ? "🔒 Locked" : "🔓 Move";
         TopButton.Content = Topmost ? "↑ On top" : "↓ On top";
         TopButton.Foreground = Brushes.Black;
-        TopButton.Background = Topmost ? new SolidColorBrush(AccentColor) : new SolidColorBrush(Color.FromRgb(221, 229, 236));
+        TopButton.Background = Topmost ? FrozenBrush(AccentColor) : FrozenBrush(Color.FromRgb(221, 229, 236));
         UpdateCountdowns(); UpdateStatus();
         WidgetStateChanged?.Invoke();
     }
@@ -136,7 +141,7 @@ public partial class MainWindow : Window
     {
         bool stale = snapshot != null && (hasError || DateTimeOffset.Now - snapshot.UpdatedAt > TimeSpan.FromMinutes(RefreshMinutes * 2));
         ConnectionLabel.Text = LoginPending ? "Signing in" : busy ? "Updating" : stale ? "Stale data" : snapshot != null ? "Signed in" : "Not connected";
-        ConnectionBadge.Background = snapshot != null && !stale ? new SolidColorBrush(AccentColor) : new SolidColorBrush(Color.FromRgb(221, 229, 236));
+        ConnectionBadge.Background = snapshot != null && !stale ? FrozenBrush(AccentColor) : FrozenBrush(Color.FromRgb(221, 229, 236));
         UpdatedLabel.Text = snapshot == null ? "Not updated yet" : $"Updated {snapshot.UpdatedAt:HH:mm}{(stale ? " · stale" : "")}";
         UpdatedLabel.ToolTip = snapshot == null ? "No successful quota request yet" : $"Last successful request: {snapshot.UpdatedAt:yyyy-MM-dd HH:mm:ss zzz}";
         StatusLabel.Text = status; StatusLabel.Visibility = string.IsNullOrEmpty(status) ? Visibility.Collapsed : Visibility.Visible;
@@ -174,11 +179,11 @@ public partial class MainWindow : Window
                 TokenUsage = await client.ReadUsageAsync(usageTimeout.Token);
                 UsageUpdatedAt = DateTimeOffset.Now; UsageUnavailable = TokenUsage.LifetimeTokens == null;
             }
-            catch (Exception e) when (e is IOException or InvalidDataException or TimeoutException or OperationCanceledException or System.Text.Json.JsonException or InvalidOperationException)
+            catch (Exception e) when (e is IOException or InvalidDataException or KeyNotFoundException or TimeoutException or OperationCanceledException or System.Text.Json.JsonException or InvalidOperationException)
             { TokenUsage = null; UsageUpdatedAt = null; UsageUnavailable = true; }
         }
         catch (OperationCanceledException) { return; }
-        catch (Exception e) when (e is IOException or InvalidDataException or TimeoutException or InvalidOperationException or System.ComponentModel.Win32Exception or System.Text.Json.JsonException)
+        catch (Exception e) when (e is IOException or InvalidDataException or KeyNotFoundException or TimeoutException or InvalidOperationException or System.ComponentModel.Win32Exception or UnauthorizedAccessException or System.Text.Json.JsonException)
         {
             hasError = true;
             status = e is TimeoutException ? "Request timed out. Retrying automatically." : e is FileNotFoundException ? "Codex CLI not found. Install Codex, then refresh." : e is IOException ? e.Message : "Could not connect to Codex. Check your login and connection, then refresh.";
@@ -218,7 +223,7 @@ public partial class MainWindow : Window
         }
         catch (OperationCanceledException) { LoginMessage = "Sign-in cancelled. Previous connection was kept."; }
         catch (TimeoutException) { LoginMessage = "Sign-in timed out. Please try again."; }
-        catch (Exception e) when (e is IOException or InvalidDataException or TimeoutException or InvalidOperationException or System.ComponentModel.Win32Exception or UnauthorizedAccessException or FormatException or System.Text.Json.JsonException)
+        catch (Exception e) when (e is IOException or InvalidDataException or KeyNotFoundException or TimeoutException or InvalidOperationException or System.ComponentModel.Win32Exception or UnauthorizedAccessException or FormatException or System.Text.Json.JsonException)
         { LoginMessage = "Sign-in failed. Check your browser and retry. Remember me requires Windows Credential Manager."; }
         finally
         {
@@ -255,7 +260,7 @@ public partial class MainWindow : Window
             AccountStatus = "Disconnected"; status = "Sign in from Settings to connect your widget."; hasError = false;
             SaveSettings();
         }
-        catch (Exception e) when (e is IOException or InvalidDataException or TimeoutException or UnauthorizedAccessException or OperationCanceledException)
+        catch (Exception e) when (e is IOException or InvalidDataException or KeyNotFoundException or TimeoutException or UnauthorizedAccessException or OperationCanceledException)
         { status = "Could not disconnect. Please try again."; }
         finally { busy = false; RefreshView(); }
     }
@@ -280,7 +285,7 @@ public partial class MainWindow : Window
         {
             var window = windows[i];
             var cell = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center };
-            cell.Children.Add(new QuotaRing { Width = 112, Height = 112, Percent = window?.RemainingPercent, RingBrush = new SolidColorBrush(AccentColor) });
+            cell.Children.Add(new QuotaRing { Width = 112, Height = 112, Percent = window?.RemainingPercent, RingBrush = FrozenBrush(AccentColor) });
             cell.Children.Add(new TextBlock { Text = window?.Label ?? (i == 0 ? "Current window" : "Long window"), FontSize = 14, FontWeight = FontWeights.SemiBold, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 5, 0, 0) });
             if (ShowCountdown)
             {
