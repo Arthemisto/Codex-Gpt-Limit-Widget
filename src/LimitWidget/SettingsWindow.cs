@@ -55,12 +55,10 @@ public sealed class SettingsWindow : Window
         var interval = new Slider { Minimum = 0, Maximum = 5, TickFrequency = 1, IsSnapToTickEnabled = true, TickPlacement = System.Windows.Controls.Primitives.TickPlacement.BottomRight, Value = Array.IndexOf(intervals, widget.RefreshMinutes), Margin = new Thickness(0, 8, 0, 0) };
         interval.ValueChanged += (_, _) => { widget.RefreshMinutes = intervals[(int)interval.Value]; intervalLabel.Text = $"Every {widget.RefreshMinutes} minutes"; }; panel.Children.Add(interval);
         var ticks = new Grid(); for (int i = 0; i < intervals.Length; i++) { ticks.ColumnDefinitions.Add(new ColumnDefinition()); var label = new TextBlock { Text = $"{intervals[i]}m", FontSize = 12, HorizontalAlignment = HorizontalAlignment.Center }; Grid.SetColumn(label, i); ticks.Children.Add(label); } panel.Children.Add(ticks);
-        Heading("Accent colors"); var colors = new UniformGrid { Columns = 2 }; panel.Children.Add(colors);
+        Heading("Accent color"); var colors = new UniformGrid { Columns = 1 }; panel.Children.Add(colors);
         AddColorPicker(colors, "Codex", () => widget.AccentColor, color => widget.AccentColor = color);
-        AddColorPicker(colors, "ChatGPT", () => widget.ChatGptAccentColor, color => widget.ChatGptAccentColor = color);
         Heading("Show"); var visibleOptions = new UniformGrid { Columns = 2 }; panel.Children.Add(visibleOptions);
         Check("Codex limits", widget.ShowCodex, value => { widget.ShowCodex = value; widget.RefreshView(); }, visibleOptions);
-        visibleOptions.Children.Add(new CheckBox { Content = "ChatGPT · V2", IsEnabled = false, ToolTip = "ChatGPT chat quotas require a separate integration." });
         Check("Reset countdown", widget.ShowCountdown, value => { widget.ShowCountdown = value; widget.RefreshView(); }, visibleOptions);
         Check("Last updated", widget.ShowUpdated, value => { widget.ShowUpdated = value; widget.RefreshView(); }, visibleOptions);
         Check("Launch button", widget.ShowLaunch, value => { widget.ShowLaunch = value; widget.RefreshView(); }, visibleOptions);
@@ -104,7 +102,7 @@ public sealed class SettingsWindow : Window
         accountStatus.Text = widget.AccountStatus;
         tokenValue.Text = widget.TokenUsage?.DisplayValue ?? "—";
         tokenCaption.Text = widget.UsageUnavailable ? "Currently unavailable" : "Lifetime · account service";
-        tokenValue.ToolTip = widget.TokenUsage?.LifetimeTokens is { } total ? $"{total:N0} tokens reported by Codex account service. This is not a verified total for all ChatGPT conversations. Updated {widget.UsageUpdatedAt:HH:mm}." : "The account service has not returned a lifetime token count.";
+        tokenValue.ToolTip = widget.TokenUsage?.LifetimeTokens is { } total ? $"{total:N0} lifetime tokens reported by the Codex account service. Updated {widget.UsageUpdatedAt:HH:mm}." : "The account service has not returned a lifetime token count.";
         loginMessage.Text = widget.LoginMessage;
         loginNotice.Visibility = string.IsNullOrEmpty(widget.LoginMessage) ? Visibility.Collapsed : Visibility.Visible;
         foreach (var button in accountButtons) button.IsEnabled = !widget.Busy;
@@ -132,7 +130,6 @@ public sealed class SettingsWindow : Window
     }
     void Heading(string text, double size = 14) => panel.Children.Add(new TextBlock { Text = text, FontSize = size, FontWeight = FontWeights.SemiBold, Margin = new Thickness(0, 7, 0, 4) });
     void Note(string text) { var note = new TextBlock { Text = text, FontSize = 12, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 3, 0, 2) }; note.SetResourceReference(TextBlock.ForegroundProperty, "Muted"); panel.Children.Add(note); }
-    StackPanel Row() { var row = new StackPanel { Orientation = Orientation.Horizontal }; panel.Children.Add(row); return row; }
     CheckBox Check(string label, bool initial, Action<bool> action, Panel? destination = null)
     {
         var box = new CheckBox { Content = label, IsChecked = initial }; box.Checked += (_, _) => action(true); box.Unchecked += (_, _) => action(false); (destination ?? panel).Children.Add(box); return box;

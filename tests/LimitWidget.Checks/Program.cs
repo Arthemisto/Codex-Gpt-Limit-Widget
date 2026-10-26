@@ -2,16 +2,6 @@ using System.Text.Json;
 using LimitWidget.Services;
 using LimitWidget;
 
-if (args.Contains("--limit-catalog"))
-{
-    using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(50));
-    using var client = new CodexClient();
-    await client.StartAsync(true, true, timeout.Token);
-    var ids = await client.ReadLimitIdsAsync(timeout.Token);
-    Console.WriteLine("Available quota identifiers: " + string.Join(", ", ids));
-    return;
-}
-
 if (args.Contains("--oauth-probe"))
 {
     using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(45));
@@ -105,13 +95,19 @@ foreach (string json in new[] { "{}", """{"rateLimitsByLimitId":{"other":{"prima
     try { Parse(json); throw new Exception("An unavailable quota must fail"); } catch (InvalidDataException) { checks++; }
 }
 string testFile = Path.Combine(AppContext.BaseDirectory, "settings-tests", "settings.json");
-var preferences = new WidgetSettings { Width = 300, Topmost = true, RememberMe = false, SessionMode = "widget", RefreshMinutes = 30, Theme = "Light", Accent = "#123456", ChatGptAccent = "#ABCDEF" };
+var preferences = new WidgetSettings { Width = 300, Topmost = true, RememberMe = false, SessionMode = "widget", RefreshMinutes = 30, Theme = "Light", Accent = "#123456" };
 preferences.Save(testFile);
 var loaded = WidgetSettings.Load(testFile);
 Check(loaded.Width == 300 && loaded.Topmost && loaded.Theme == "Light", "Appearance survives save and reload");
-Check(loaded.Accent == "#123456" && loaded.ChatGptAccent == "#ABCDEF", "Codex and ChatGPT accents save independently");
+Check(loaded.Accent == "#123456", "Codex accent survives save and reload");
 Check(!loaded.RememberMe && loaded.SessionMode == "widget" && loaded.RefreshMinutes == 30, "Account preferences and interval survive save and reload");
 Check(!File.Exists(testFile + ".tmp"), "Atomic save leaves no unfinished file");
+File.WriteAllText(testFile, """{"ShowGpt":true,"ChatGptAccent":"#ABCDEF","Accent":"#654321","Width":340,"SessionMode":"widget"}""");
+loaded = WidgetSettings.Load(testFile);
+Check(loaded.Accent == "#654321" && loaded.Width == 340 && loaded.SessionMode == "widget", "Legacy settings preserve active preferences");
+loaded.Save(testFile);
+using (var cleaned = JsonDocument.Parse(File.ReadAllText(testFile)))
+    Check(!cleaned.RootElement.TryGetProperty("ShowGpt", out _) && !cleaned.RootElement.TryGetProperty("ChatGptAccent", out _), "Removed feature settings are dropped on save");
 File.WriteAllText(testFile, "invalid JSON");
 Check(WidgetSettings.Load(testFile).RefreshMinutes == 10, "Corrupted settings recover to defaults");
 Console.WriteLine($"Passed {checks} authentication, quota and settings checks.");

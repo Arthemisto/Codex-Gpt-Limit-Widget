@@ -1,4 +1,4 @@
-# Codex GPT Limit Widget
+# Codex Limit Widget
 
 A compact Windows desktop widget for Codex subscription limits, built with C# and WPF on .NET 10 LTS.
 
@@ -11,18 +11,12 @@ The app uses a cyan neural-hourglass icon for its EXE, windows and tray. Source 
 - Last successful update time, manual refresh, and automatic refresh every 1 / 5 / 10 / 15 / 30 / 60 minutes (10 by default).
 - Preserve the latest values on request failures and mark them stale. Unknown quotas display a dash, never an invented percentage.
 - Light, dark, and transparent adaptive themes. Adaptive colors follow Windows light/dark preferences; background opacity is adjustable. Native background blur is not included.
-- Independent Codex and ChatGPT accent colors, with a hue spectrum, saturation/brightness plane and RGB/HEX entry. Three widget sizes, visibility options, always-on-top and position lock.
+- Custom Codex accent color, with a hue spectrum, saturation/brightness plane and RGB/HEX entry. Three widget sizes, visibility options, always-on-top and position lock.
 - Save settings, remember window position, recover an off-screen window, launch Codex, and optional Windows startup registration.
 - Tray menu, hide/restore, and single-instance behavior.
 - The Codex helper exits between polls for existing or remembered logins. Only an ephemeral login keeps it running to retain its in-memory session.
 
-ChatGPT chat limits are planned separately for V2 and are disabled in this release. No ChatGPT quota values are simulated.
-
-The live quota-source probe currently returns only `codex` for the tested account. The existing OAuth connection has not provided ordinary ChatGPT chat quotas; a second accent does not imply a connected second quota source. Recheck without accessing conversations or credential files:
-
-```powershell
-dotnet run --project tests/LimitWidget.Checks -- --limit-catalog
-```
+The widget displays Codex quota and usage statistics. ChatGPT is used as the account sign-in provider.
 
 ## Run
 

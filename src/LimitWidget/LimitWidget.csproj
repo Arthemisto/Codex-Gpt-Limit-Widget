@@ -8,6 +8,9 @@
     <ImplicitUsings>disable</ImplicitUsings>
     <Version>0.2.0</Version>
     <ApplicationIcon>Assets/app.ico</ApplicationIcon>
+    <Product>Codex Limit Widget</Product>
+    <AssemblyTitle>Codex Limit Widget</AssemblyTitle>
+    <Description>Windows desktop widget for Codex quota and usage statistics.</Description>
   </PropertyGroup>
   <ItemGroup><Resource Include="Assets/app.ico" /></ItemGroup>
 </Project>

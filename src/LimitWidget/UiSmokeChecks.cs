@@ -6,7 +6,7 @@ using System.Windows.Threading;
 
 namespace LimitWidget;
 
-/// <summary>Opt-in UI validation with sample preferences, without modifying the user's settings or login.</summary>
+/// <summary>Opt-in UI validation with temporary preferences, without modifying the user's settings or login.</summary>
 internal static class UiSmokeChecks
 {
     public static async Task RunAsync(MainWindow window, string outputDirectory)
