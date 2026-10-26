@@ -55,6 +55,9 @@ public sealed class CodexClient : IDisposable
     {
         if (process != null) throw new InvalidOperationException("Codex client already started.");
         string executable = FindExecutable() ?? throw new FileNotFoundException("Codex CLI was not found. Install Codex and restart the widget.");
+        // Trust verification can consult Windows certificate services; keep it off the UI thread.
+        using var verified = await Task.Run(() => TrustedExecutable.Open(executable), cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
         SharedSession = sharedSession;
         PersistentSession = rememberMe && !sharedSession;
         var info = new ProcessStartInfo(executable)

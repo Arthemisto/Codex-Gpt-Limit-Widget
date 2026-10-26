@@ -70,6 +70,20 @@ File.WriteAllText(Path.Combine(versionedRoot, "codex.exe"), "current fixture");
 File.WriteAllText(Path.Combine(pathRoot, "codex.exe"), "path fixture");
 Check(CodexClient.SelectExecutable(bundledRoot, pathRoot) == Path.Combine(versionedRoot, "codex.exe"), "Versioned Codex takes precedence over legacy root and PATH");
 Check(CodexClient.SelectExecutable(Path.Combine(executableFixture, "missing"), pathRoot) == Path.Combine(pathRoot, "codex.exe"), "PATH remains a fallback when bundled Codex is absent");
+try { using var unsigned = TrustedExecutable.Open(Path.Combine(pathRoot, "codex.exe")); throw new Exception("Unsigned helper accepted"); }
+catch (IOException error) { Check(error.Message.Contains("signature"), "Unsigned helper blocked before execution"); }
+string runtimeDirectory = System.Runtime.InteropServices.RuntimeEnvironment.GetRuntimeDirectory();
+string sdkHost = Path.GetFullPath(Path.Combine(runtimeDirectory, "..", "..", "..", "dotnet.exe"));
+try { using var wrongPublisher = TrustedExecutable.Open(sdkHost); throw new Exception("Non-OpenAI publisher accepted"); }
+catch (IOException error) { Check(error.Message.Contains("approved OpenAI"), "Valid Microsoft-signed executable rejected as non-OpenAI"); }
+string tampered = Path.Combine(executableFixture, "tampered.exe");
+File.Copy(sdkHost, tampered, true);
+using (var edit = new FileStream(tampered, FileMode.Open, FileAccess.ReadWrite))
+{
+    edit.Position = 1024; int value = edit.ReadByte(); edit.Position = 1024; edit.WriteByte((byte)(value ^ 0xFF));
+}
+try { using var invalid = TrustedExecutable.Open(tampered); throw new Exception("Modified signed executable accepted"); }
+catch (IOException error) { Check(error.Message.Contains("signature"), "Tampered signed executable blocked before execution"); }
 var lines = new BoundedLineReader(new StringReader("abc\r\n\nlast"), 4);
 Check(await lines.ReadAsync(default) == "abc", "Bounded reader handles CRLF");
 Check(await lines.ReadAsync(default) == "", "Bounded reader preserves empty lines");
