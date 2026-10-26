@@ -4,8 +4,10 @@ using System.Windows.Media;
 namespace LimitWidget;
 public sealed class QuotaRing : FrameworkElement
 {
- public double? Percent { get; set; }
- public Brush RingBrush { get; set; } = Brushes.MediumAquamarine;
+ double? percent;
+ Brush ringBrush = Brushes.MediumAquamarine;
+ public double? Percent { get => percent; set { if (percent == value) return; percent = value; InvalidateVisual(); } }
+ public Brush RingBrush { get => ringBrush; set { if (ReferenceEquals(ringBrush, value)) return; ringBrush = value; InvalidateVisual(); } }
  Pen? trackPen, accentPen;
  Brush? previousTrack, previousAccent;
  protected override void OnRender(DrawingContext dc)

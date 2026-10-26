@@ -20,7 +20,9 @@ public partial class MainWindow : Window
     CancellationTokenSource? loginCancellation;
     readonly DispatcherTimer updateTimer = new() { Interval = TimeSpan.FromSeconds(30) };
     readonly Stopwatch sinceAttempt = new();
-    readonly List<(TextBlock Label, DateTimeOffset? Reset)> countdowns = new();
+    readonly QuotaRing[] quotaRings = new QuotaRing[2];
+    readonly TextBlock[] quotaCaptions = new TextBlock[2], resetLabels = new TextBlock[2];
+    static readonly SolidColorBrush NeutralBadge = FrozenBrush(Color.FromRgb(221, 229, 236));
     readonly Forms.NotifyIcon tray;
     readonly Forms.ContextMenuStrip menu;
     readonly System.Drawing.Icon trayImage;
@@ -47,6 +49,7 @@ public partial class MainWindow : Window
     {
         this.smokeTest = smokeTest;
         InitializeComponent();
+        BuildQuotaRows();
         SourceInitialized += (_, _) => WindowsIntegration.HideFromTaskSwitcher(this);
         var iconUri = new Uri("pack://application:,,,/Assets/app.ico");
         Icon = System.Windows.Media.Imaging.BitmapFrame.Create(iconUri);
@@ -113,18 +116,33 @@ public partial class MainWindow : Window
         var brush = new SolidColorBrush(color); brush.Freeze(); return brush;
     }
 
+    static bool SetThemeBrush(string name, Color color)
+    {
+        var resources = Application.Current.Resources;
+        if (resources[name] is SolidColorBrush existing && existing.Color == color) return false;
+        resources[name] = FrozenBrush(color); return true;
+    }
+
     public void RefreshView()
     {
         bool light = Theme == "Light" || Theme == "Adaptive glass" && WindowsIntegration.SystemLightTheme();
         byte alpha = Theme == "Adaptive glass" ? (byte)Math.Round(GlassOpacity * 255) : (byte)255;
-        Application.Current.Resources["Surface"] = FrozenBrush(light ? Color.FromArgb(alpha, 244, 247, 250) : Color.FromArgb(alpha, 32, 40, 47));
-        Application.Current.Resources["Foreground"] = FrozenBrush(light ? Color.FromRgb(25, 36, 44) : Color.FromRgb(244, 247, 250));
-        Application.Current.Resources["Muted"] = FrozenBrush(light ? Color.FromRgb(79, 96, 110) : Color.FromRgb(168, 181, 192));
-        Application.Current.Resources["Line"] = FrozenBrush(light ? Color.FromRgb(202, 211, 219) : Color.FromRgb(70, 82, 91));
-        Application.Current.Resources["Accent"] = FrozenBrush(AccentColor);
-        Application.Current.Resources["ButtonSurface"] = FrozenBrush(light ? Color.FromRgb(221, 229, 236) : Color.FromRgb(48, 60, 70));
-        QuotaRows.Children.Clear(); countdowns.Clear();
-        if (ShowCodex) AddService();
+        bool themeChanged = SetThemeBrush("Surface", light ? Color.FromArgb(alpha, 244, 247, 250) : Color.FromArgb(alpha, 32, 40, 47));
+        themeChanged |= SetThemeBrush("Foreground", light ? Color.FromRgb(25, 36, 44) : Color.FromRgb(244, 247, 250));
+        themeChanged |= SetThemeBrush("Muted", light ? Color.FromRgb(79, 96, 110) : Color.FromRgb(168, 181, 192));
+        themeChanged |= SetThemeBrush("Line", light ? Color.FromRgb(202, 211, 219) : Color.FromRgb(70, 82, 91));
+        themeChanged |= SetThemeBrush("Accent", AccentColor);
+        themeChanged |= SetThemeBrush("ButtonSurface", light ? Color.FromRgb(221, 229, 236) : Color.FromRgb(48, 60, 70));
+        QuotaRows.Visibility = ShowCodex ? Visibility.Visible : Visibility.Collapsed;
+        for (int i = 0; i < 2; i++)
+        {
+            var quota = i == 0 ? snapshot?.Primary : snapshot?.Secondary;
+            quotaRings[i].Percent = quota?.RemainingPercent;
+            quotaRings[i].RingBrush = (Brush)Application.Current.Resources["Accent"];
+            quotaCaptions[i].Text = quota?.Label ?? (i == 0 ? "Current window" : "Long window");
+            resetLabels[i].Visibility = ShowCountdown ? Visibility.Visible : Visibility.Collapsed;
+            if (themeChanged) quotaRings[i].InvalidateVisual();
+        }
         EmptyHint.Visibility = ShowCodex ? Visibility.Collapsed : Visibility.Visible;
         LaunchButton.Visibility = ShowLaunch ? Visibility.Visible : Visibility.Collapsed;
         LaunchDivider.Visibility = LaunchButton.Visibility;
@@ -132,7 +150,7 @@ public partial class MainWindow : Window
         LockButton.Content = Locked ? "🔒 Locked" : "🔓 Move";
         TopButton.Content = Topmost ? "↑ On top" : "↓ On top";
         TopButton.Foreground = Brushes.Black;
-        TopButton.Background = Topmost ? FrozenBrush(AccentColor) : FrozenBrush(Color.FromRgb(221, 229, 236));
+        TopButton.Background = Topmost ? (Brush)Application.Current.Resources["Accent"] : NeutralBadge;
         UpdateCountdowns(); UpdateStatus();
         WidgetStateChanged?.Invoke();
     }
@@ -141,7 +159,7 @@ public partial class MainWindow : Window
     {
         bool stale = snapshot != null && (hasError || DateTimeOffset.Now - snapshot.UpdatedAt > TimeSpan.FromMinutes(RefreshMinutes * 2));
         ConnectionLabel.Text = LoginPending ? "Signing in" : busy ? "Updating" : stale ? "Stale data" : snapshot != null ? "Signed in" : "Not connected";
-        ConnectionBadge.Background = snapshot != null && !stale ? FrozenBrush(AccentColor) : FrozenBrush(Color.FromRgb(221, 229, 236));
+        ConnectionBadge.Background = snapshot != null && !stale ? (Brush)Application.Current.Resources["Accent"] : NeutralBadge;
         UpdatedLabel.Text = snapshot == null ? "Not updated yet" : $"Updated {snapshot.UpdatedAt:HH:mm}{(stale ? " · stale" : "")}";
         UpdatedLabel.ToolTip = snapshot == null ? "No successful quota request yet" : $"Last successful request: {snapshot.UpdatedAt:yyyy-MM-dd HH:mm:ss zzz}";
         StatusLabel.Text = status; StatusLabel.Visibility = string.IsNullOrEmpty(status) ? Visibility.Collapsed : Visibility.Visible;
@@ -267,32 +285,29 @@ public partial class MainWindow : Window
 
     void UpdateCountdowns()
     {
-        foreach (var (label, reset) in countdowns)
+        for (int i = 0; i < 2; i++)
         {
+            var label = resetLabels[i];
+            var reset = (i == 0 ? snapshot?.Primary : snapshot?.Secondary)?.ResetsAt;
             if (reset == null) { label.Text = "Reset unavailable"; continue; }
             var remaining = reset.Value - DateTimeOffset.UtcNow;
             label.Text = remaining <= TimeSpan.Zero ? "Reset due · refresh" : remaining.TotalDays >= 1 ? $"Resets in {(int)remaining.TotalDays}d {remaining.Hours:00}h" : $"Resets in {(int)remaining.TotalHours}h {remaining.Minutes:00}m";
         }
     }
 
-    void AddService()
+    void BuildQuotaRows()
     {
         var section = new StackPanel { Margin = new Thickness(0, 12, 0, 0) };
         section.Children.Add(new TextBlock { Text = "CODEX", FontSize = 12, Margin = new Thickness(2, 0, 0, 10) });
         var grid = new Grid(); grid.ColumnDefinitions.Add(new ColumnDefinition()); grid.ColumnDefinitions.Add(new ColumnDefinition());
-        var windows = new[] { snapshot?.Primary, snapshot?.Secondary };
-        for (int i = 0; i < windows.Length; i++)
+        for (int i = 0; i < 2; i++)
         {
-            var window = windows[i];
             var cell = new StackPanel { HorizontalAlignment = HorizontalAlignment.Center };
-            cell.Children.Add(new QuotaRing { Width = 112, Height = 112, Percent = window?.RemainingPercent, RingBrush = FrozenBrush(AccentColor) });
-            cell.Children.Add(new TextBlock { Text = window?.Label ?? (i == 0 ? "Current window" : "Long window"), FontSize = 14, FontWeight = FontWeights.SemiBold, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 5, 0, 0) });
-            if (ShowCountdown)
-            {
-                var reset = new TextBlock { FontSize = 12, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 3, 0, 0) };
-                reset.SetResourceReference(TextBlock.ForegroundProperty, "Muted"); cell.Children.Add(reset);
-                countdowns.Add((reset, window?.ResetsAt));
-            }
+            quotaRings[i] = new QuotaRing { Width = 112, Height = 112 };
+            quotaCaptions[i] = new TextBlock { FontSize = 14, FontWeight = FontWeights.SemiBold, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 5, 0, 0) };
+            resetLabels[i] = new TextBlock { FontSize = 12, HorizontalAlignment = HorizontalAlignment.Center, Margin = new Thickness(0, 3, 0, 0) };
+            resetLabels[i].SetResourceReference(TextBlock.ForegroundProperty, "Muted");
+            cell.Children.Add(quotaRings[i]); cell.Children.Add(quotaCaptions[i]); cell.Children.Add(resetLabels[i]);
             Grid.SetColumn(cell, i); grid.Children.Add(cell);
         }
         section.Children.Add(grid); QuotaRows.Children.Add(section);

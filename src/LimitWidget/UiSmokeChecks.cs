@@ -13,6 +13,7 @@ internal static class UiSmokeChecks
     {
         var results = new List<string>();
         string? error = null;
+        object? performance = null;
         try
         {
             Directory.CreateDirectory(outputDirectory);
@@ -22,6 +23,20 @@ internal static class UiSmokeChecks
             results.Add("Live quota displayed");
             if (!window.UpdatedLabel.Text.StartsWith("Updated ")) throw new InvalidOperationException("Successful-update timestamp missing.");
             string timestamp = window.UpdatedLabel.Text;
+            var originalSection = window.QuotaRows.Children[0];
+            var originalAccent = Application.Current.Resources["Accent"];
+            window.RefreshView();
+            if (!ReferenceEquals(originalSection, window.QuotaRows.Children[0]) || !ReferenceEquals(originalAccent, Application.Current.Resources["Accent"]))
+                throw new InvalidOperationException("Unchanged refresh rebuilt quota elements or theme brushes.");
+            window.ShowLaunch = false; window.RefreshView(); window.UpdateLayout();
+            double compactHeight = window.ActualHeight;
+            window.ShowLaunch = true; window.RefreshView(); window.UpdateLayout();
+            if (window.ActualHeight <= compactHeight) throw new InvalidOperationException("Hidden launch footer did not collapse.");
+            window.ShowCountdown = false; window.ShowCodex = false; window.RefreshView();
+            if (window.QuotaRows.Visibility != Visibility.Collapsed) throw new InvalidOperationException("Hidden quotas remained visible.");
+            window.ShowCountdown = true; window.ShowCodex = true; window.RefreshView();
+            if (!ReferenceEquals(originalSection, window.QuotaRows.Children[0])) throw new InvalidOperationException("Display toggles rebuilt quota elements.");
+            results.Add("Quota elements and theme brushes reused; display toggles and footer collapse work");
             foreach (string theme in new[] { "Dark", "Light", "Adaptive glass" })
             {
                 window.Theme = theme; window.RefreshView();
@@ -49,12 +64,25 @@ internal static class UiSmokeChecks
             Capture(colorPicker, Path.Combine(outputDirectory, "color-picker.png")); colorPicker.Close();
             results.Add("RGB / HSV color picker opens and renders");
             window.Hide(); window.ShowWidget(); results.Add("Hide and restore");
+            // Diagnostic only: compare identical UI refresh work without forcing GC or trimming memory.
+            for (int i = 0; i < 20; i++) window.RefreshView();
+            long allocated = GC.GetAllocatedBytesForCurrentThread();
+            var clock = System.Diagnostics.Stopwatch.StartNew();
+            for (int i = 0; i < 1000; i++) window.RefreshView();
+            clock.Stop();
+            using var process = System.Diagnostics.Process.GetCurrentProcess(); process.Refresh();
+            performance = new
+            {
+                refreshes = 1000, allocatedBytes = GC.GetAllocatedBytesForCurrentThread() - allocated,
+                elapsedMs = clock.Elapsed.TotalMilliseconds, workingSetBytes = process.WorkingSet64,
+                privateBytes = process.PrivateMemorySize64
+            };
         }
         catch (Exception e) { error = e.GetType().Name + ": " + e.Message; }
         finally
         {
             Directory.CreateDirectory(outputDirectory);
-            File.WriteAllText(Path.Combine(outputDirectory, "smoke-result.json"), JsonSerializer.Serialize(new { passed = error == null, results, error }, new JsonSerializerOptions { WriteIndented = true }));
+            File.WriteAllText(Path.Combine(outputDirectory, "smoke-result.json"), JsonSerializer.Serialize(new { passed = error == null, results, error, performance }, new JsonSerializerOptions { WriteIndented = true }));
             window.ExitWidget();
         }
     }
