@@ -14,9 +14,17 @@ public partial class App : Application
             smokeWindow.Loaded += async (_, _) => await UiSmokeChecks.RunAsync(smokeWindow, e.Args[1]);
             smokeWindow.Show(); return;
         }
+        try
+        {
         instance = new Mutex(true, @"Local\CodexGptLimitWidget", out bool first);
         showEvent = new EventWaitHandle(false, EventResetMode.AutoReset, @"Local\CodexGptLimitWidget.Show");
         if (!first) { showEvent.Set(); Shutdown(); return; }
+        }
+        catch (Exception error) when (error is UnauthorizedAccessException or System.IO.IOException)
+        {
+            MessageBox.Show("The widget could not access its single-instance controls. Close any existing widget, including instances running as administrator, and try again.", "Codex Limit Widget", MessageBoxButton.OK, MessageBoxImage.Warning);
+            Shutdown(); return;
+        }
         var window = new MainWindow(); MainWindow = window;
         if (e.Args.Contains("--sign-in"))
             window.Loaded += async (_, _) =>

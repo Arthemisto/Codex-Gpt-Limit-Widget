@@ -19,8 +19,10 @@ internal static class WindowsIntegration
 
     public static void SetStartup(bool enabled)
     {
+        string? executable = Environment.ProcessPath;
+        if (enabled && string.IsNullOrWhiteSpace(executable)) throw new IOException("The widget executable path is unavailable.");
         using var key = Registry.CurrentUser.CreateSubKey(RunKey);
-        if (enabled) key.SetValue(EntryName, $"\"{Environment.ProcessPath}\"");
+        if (enabled) key.SetValue(EntryName, $"\"{executable}\"");
         else key.DeleteValue(EntryName, false);
     }
 

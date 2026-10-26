@@ -22,6 +22,7 @@ public partial class MainWindow : Window
     readonly Stopwatch sinceAttempt = new();
     readonly List<(TextBlock Label, DateTimeOffset? Reset)> countdowns = new();
     readonly Forms.NotifyIcon tray;
+    readonly Forms.ContextMenuStrip menu;
     readonly System.Drawing.Icon trayImage;
     bool busy, exiting, hasError;
     readonly bool smokeTest;
@@ -64,9 +65,9 @@ public partial class MainWindow : Window
             WindowStartupLocation = WindowStartupLocation.Manual; Left = position.Left; Top = position.Top;
         }
 
-        var menu = new Forms.ContextMenuStrip();
+        menu = new Forms.ContextMenuStrip();
         menu.Items.Add("Show widget", null, (_, _) => Dispatcher.Invoke(ShowWidget));
-        menu.Items.Add("Refresh", null, async (_, _) => await Dispatcher.InvokeAsync(RefreshLimitsAsync).Task.Unwrap());
+        menu.Items.Add("Refresh", null, async (_, _) => await RefreshLimitsAsync());
         menu.Items.Add("Settings", null, (_, _) => Dispatcher.Invoke(ShowSettings));
         menu.Items.Add("Exit", null, (_, _) => Dispatcher.Invoke(ExitWidget));
         using (var iconStream = Application.GetResourceStream(iconUri)!.Stream)
@@ -89,7 +90,7 @@ public partial class MainWindow : Window
         {
             updateTimer.Stop(); lifetime.Cancel(); loginCancellation?.Cancel(); client?.Dispose();
             SystemEvents.UserPreferenceChanged -= OnThemeChanged; SystemEvents.DisplaySettingsChanged -= OnDisplaysChanged;
-            tray.Visible = false; tray.Dispose(); trayImage.Dispose();
+            tray.Visible = false; tray.Dispose(); menu.Dispose(); trayImage.Dispose();
         };
         RefreshView();
     }
@@ -173,11 +174,11 @@ public partial class MainWindow : Window
                 TokenUsage = await client.ReadUsageAsync(usageTimeout.Token);
                 UsageUpdatedAt = DateTimeOffset.Now; UsageUnavailable = TokenUsage.LifetimeTokens == null;
             }
-            catch (Exception e) when (e is IOException or TimeoutException or OperationCanceledException or System.Text.Json.JsonException or InvalidOperationException)
+            catch (Exception e) when (e is IOException or InvalidDataException or TimeoutException or OperationCanceledException or System.Text.Json.JsonException or InvalidOperationException)
             { TokenUsage = null; UsageUpdatedAt = null; UsageUnavailable = true; }
         }
         catch (OperationCanceledException) { return; }
-        catch (Exception e) when (e is IOException or TimeoutException or InvalidOperationException or System.ComponentModel.Win32Exception or System.Text.Json.JsonException)
+        catch (Exception e) when (e is IOException or InvalidDataException or TimeoutException or InvalidOperationException or System.ComponentModel.Win32Exception or System.Text.Json.JsonException)
         {
             hasError = true;
             status = e is TimeoutException ? "Request timed out. Retrying automatically." : e is FileNotFoundException ? "Codex CLI not found. Install Codex, then refresh." : e is IOException ? e.Message : "Could not connect to Codex. Check your login and connection, then refresh.";
@@ -217,7 +218,7 @@ public partial class MainWindow : Window
         }
         catch (OperationCanceledException) { LoginMessage = "Sign-in cancelled. Previous connection was kept."; }
         catch (TimeoutException) { LoginMessage = "Sign-in timed out. Please try again."; }
-        catch (Exception e) when (e is IOException or TimeoutException or InvalidOperationException or System.ComponentModel.Win32Exception or UnauthorizedAccessException or FormatException or System.Text.Json.JsonException)
+        catch (Exception e) when (e is IOException or InvalidDataException or TimeoutException or InvalidOperationException or System.ComponentModel.Win32Exception or UnauthorizedAccessException or FormatException or System.Text.Json.JsonException)
         { LoginMessage = "Sign-in failed. Check your browser and retry. Remember me requires Windows Credential Manager."; }
         finally
         {
@@ -254,7 +255,7 @@ public partial class MainWindow : Window
             AccountStatus = "Disconnected"; status = "Sign in from Settings to connect your widget."; hasError = false;
             SaveSettings();
         }
-        catch (Exception e) when (e is IOException or TimeoutException or UnauthorizedAccessException or OperationCanceledException)
+        catch (Exception e) when (e is IOException or InvalidDataException or TimeoutException or UnauthorizedAccessException or OperationCanceledException)
         { status = "Could not disconnect. Please try again."; }
         finally { busy = false; RefreshView(); }
     }
