@@ -2,7 +2,7 @@
 
 A compact Windows desktop widget for Codex subscription limits, built with C# and WPF on .NET 10 LTS.
 
-The app uses a cyan neural-hourglass icon for its EXE, windows and tray. Source artwork, multi-resolution ICO and the generation prompt are in `src/LimitWidget/Assets`; the ICO can also be reused for a future installer.
+The app uses a cyan neural-hourglass icon for its EXE, setup, windows and tray. Source artwork, multi-resolution ICO and the generation prompt are in `src/LimitWidget/Assets`.
 
 ## Features
 
@@ -19,6 +19,8 @@ The app uses a cyan neural-hourglass icon for its EXE, windows and tray. Source 
 The widget displays Codex quota and usage statistics. ChatGPT is used as the account sign-in provider.
 
 ## Run
+
+Run `CodexLimitWidget-<version>-setup-x64.exe` for an installed copy. Setup installs for the current user without administrator rights and creates a Start menu shortcut. Exit the widget from its tray menu before installing an update. Codex must be installed separately.
 
 Use the portable `LimitWidget.exe` from a local build. It includes the .NET runtime; it still requires an installed **Codex CLI**. The Codex desktop app is required for the Launch Codex button (`codex://`).
 
@@ -43,11 +45,14 @@ Preferences and position are stored in `%LocalAppData%/CodexGptLimitWidget/`. Ap
 
 ## Build and checks
 
+See [complete compilation and installer instructions](docs/BUILD.md).
+
 Requires Windows and .NET SDK 10. A locally installed SDK at `.tools/dotnet` is also supported by the build script.
 
 ```powershell
 .\build.ps1                  # Release build and deterministic checks
 .\build.ps1 -Portable        # Also produce a standalone EXE and ZIP in artifacts/
+.\build.ps1 -Installer       # Also compile setup using Inno Setup 7
 .\build.ps1 -LiveCheck       # Also verify the existing Codex session and real quotas
 ```
 
