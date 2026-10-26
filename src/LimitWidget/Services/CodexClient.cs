@@ -13,6 +13,10 @@ public sealed class CodexClient : IDisposable
     readonly SemaphoreSlim writer = new(1, 1);
     readonly CancellationTokenSource lifetime = new();
     Process? process;
+    ChildProcessJob? job;
+    Task responses = Task.CompletedTask, errors = Task.CompletedTask;
+    readonly object lifecycle = new();
+    readonly List<Task> writes = new();
     long sequence;
     LoginAttempt? loginAttempt;
     public bool IsRunning => !disposed && process is { HasExited: false };
@@ -22,16 +26,22 @@ public sealed class CodexClient : IDisposable
 
     public static string? FindExecutable()
     {
+        string root = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "OpenAI", "Codex", "bin");
+        if (Directory.Exists(root))
+        {
+            string direct = Path.Combine(root, "codex.exe");
+            if (File.Exists(direct)) return direct;
+            string? bundled = Directory.EnumerateDirectories(root).OrderByDescending(Directory.GetLastWriteTimeUtc)
+                .Select(folder => Path.Combine(folder, "codex.exe")).FirstOrDefault(File.Exists);
+            if (bundled != null) return bundled;
+        }
         foreach (string folder in (Environment.GetEnvironmentVariable("PATH") ?? "").Split(Path.PathSeparator))
         {
             string candidate;
             try { candidate = Path.Combine(folder.Trim('"'), "codex.exe"); } catch (ArgumentException) { continue; }
             if (Path.IsPathFullyQualified(candidate) && File.Exists(candidate)) return candidate;
         }
-        string root = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "OpenAI", "Codex", "bin");
-        if (!Directory.Exists(root)) return null;
-        return Directory.EnumerateDirectories(root).OrderByDescending(Directory.GetLastWriteTimeUtc)
-            .Select(folder => Path.Combine(folder, "codex.exe")).FirstOrDefault(File.Exists);
+        return null;
     }
 
     public async Task StartAsync(bool sharedSession, bool rememberMe, CancellationToken cancellationToken)
@@ -56,9 +66,15 @@ public sealed class CodexClient : IDisposable
         }
         info.ArgumentList.Add("-c"); info.ArgumentList.Add("analytics.enabled=false");
         info.ArgumentList.Add("app-server"); info.ArgumentList.Add("--listen"); info.ArgumentList.Add("stdio://");
-        process = Process.Start(info) ?? throw new IOException("Could not start Codex.");
-        _ = ReadResponsesAsync(process);
-        _ = DrainErrorsAsync(process);
+        job = new ChildProcessJob();
+        try
+        {
+            process = Process.Start(info) ?? throw new IOException("Could not start Codex.");
+            job.Assign(process);
+        }
+        catch { Dispose(); throw; }
+        responses = ReadResponsesAsync(process);
+        errors = DrainErrorsAsync(process);
         await RequestAsync("initialize", new { clientInfo = new { name = "codex_limit_widget", title = "Codex Limit Widget", version = "0.2.0" } }, cancellationToken);
         await WriteAsync(new { method = "initialized", @params = new { } }, cancellationToken);
     }
@@ -124,8 +140,20 @@ public sealed class CodexClient : IDisposable
         finally { pending.TryRemove(id, out _); }
     }
 
-    async Task WriteAsync(object message, CancellationToken cancellationToken)
+    Task WriteAsync(object message, CancellationToken cancellationToken)
     {
+        lock (lifecycle)
+        {
+            if (disposed) throw new IOException("Codex connection is closed.");
+            writes.RemoveAll(task => task.IsCompleted);
+            Task task = WriteCoreAsync(message, cancellationToken); writes.Add(task); return task;
+        }
+    }
+
+    async Task WriteCoreAsync(object message, CancellationToken cancellationToken)
+    {
+        using var linked = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, lifetime.Token);
+        cancellationToken = linked.Token;
         await writer.WaitAsync(cancellationToken);
         try
         {
@@ -140,9 +168,9 @@ public sealed class CodexClient : IDisposable
     {
         try
         {
-            while (await child.StandardOutput.ReadLineAsync(lifetime.Token) is { } line)
+            var reader = new BoundedLineReader(child.StandardOutput, 2_000_000);
+            while (await reader.ReadAsync(lifetime.Token) is { } line)
             {
-                if (line.Length > 2_000_000) throw new IOException("Codex response exceeded the size limit.");
                 using var doc = JsonDocument.Parse(line);
                 var root = doc.RootElement;
                 if (root.TryGetProperty("id", out var id) && id.ValueKind == JsonValueKind.Number && id.TryGetInt64(out long number) && pending.TryRemove(number, out var completion))
@@ -159,7 +187,7 @@ public sealed class CodexClient : IDisposable
                 }
             }
         }
-        catch (Exception e) when (e is IOException or OperationCanceledException or JsonException or InvalidOperationException) { }
+        catch (Exception e) when (e is IOException or OperationCanceledException or JsonException or InvalidOperationException or KeyNotFoundException) { }
         finally
         {
             foreach (var item in pending.Values) item.TrySetException(new IOException("Codex connection closed. Retry refresh."));
@@ -170,16 +198,34 @@ public sealed class CodexClient : IDisposable
     async Task DrainErrorsAsync(Process child)
     {
         // Drain without persisting or showing raw output, which may contain account information.
-        try { while (await child.StandardError.ReadLineAsync(lifetime.Token) != null) { } }
+        var buffer = new char[4096];
+        try { while (await child.StandardError.ReadAsync(buffer.AsMemory(), lifetime.Token) != 0) { } }
         catch (Exception e) when (e is IOException or OperationCanceledException or InvalidOperationException) { }
     }
 
     public void Dispose()
     {
-        if (disposed) return;
-        disposed = true;
+        Task[] active;
+        lock (lifecycle)
+        {
+            if (disposed) return;
+            disposed = true;
+            active = writes.Append(responses).Append(errors).ToArray();
+        }
         lifetime.Cancel();
-        try { if (process is { HasExited: false }) process.Kill(entireProcessTree: true); } catch (InvalidOperationException) { }
-        process?.Dispose();
+        foreach (var completion in pending.Values) completion.TrySetException(new IOException("Codex connection closed."));
+        loginAttempt?.ConnectionClosed();
+        try { if (process is { HasExited: false }) process.Kill(entireProcessTree: true); }
+        catch (Exception error) when (error is InvalidOperationException or System.ComponentModel.Win32Exception) { }
+        finally { job?.Dispose(); }
+        // Async readers/writers must finish before their synchronization objects and streams are disposed.
+        _ = ReleaseResourcesAsync(active);
+    }
+
+    async Task ReleaseResourcesAsync(Task[] active)
+    {
+        try { await Task.WhenAll(active).ConfigureAwait(false); }
+        catch (Exception) { /* Operations already report failures to their callers. */ }
+        finally { process?.Dispose(); writer.Dispose(); lifetime.Dispose(); }
     }
 }

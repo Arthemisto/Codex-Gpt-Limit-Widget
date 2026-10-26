@@ -37,8 +37,13 @@ if (args.Contains("--live"))
     await client.StartAsync(true, true, cancellation.Token);
     Console.WriteLine($"ChatGPT-backed Codex session: {await client.HasAccountAsync(cancellation.Token)}");
     var quota = await client.ReadLimitsAsync(cancellation.Token);
-    var usage = await client.ReadUsageAsync(cancellation.Token);
-    Console.WriteLine($"Codex lifetime tokens: {usage.DisplayValue}");
+    try
+    {
+        var usage = await client.ReadUsageAsync(cancellation.Token);
+        Console.WriteLine($"Codex lifetime tokens: {usage.DisplayValue}");
+    }
+    catch (Exception error) when (error is IOException or TimeoutException)
+    { Console.WriteLine("Optional lifetime token statistics unavailable from this Codex version."); }
     Console.WriteLine($"Primary: {quota.Primary?.RemainingPercent}% remaining, {quota.Primary?.DurationMinutes} min window");
     Console.WriteLine($"Secondary: {quota.Secondary?.RemainingPercent}% remaining, {quota.Secondary?.DurationMinutes} min window");
     return;
@@ -46,6 +51,30 @@ if (args.Contains("--live"))
 
 int checks = 0;
 void Check(bool condition, string message) { if (!condition) throw new Exception(message); checks++; }
+var lines = new BoundedLineReader(new StringReader("abc\r\n\nlast"), 4);
+Check(await lines.ReadAsync(default) == "abc", "Bounded reader handles CRLF");
+Check(await lines.ReadAsync(default) == "", "Bounded reader preserves empty lines");
+Check(await lines.ReadAsync(default) == "last", "Bounded reader accepts exact limit and EOF");
+Check(await lines.ReadAsync(default) == null, "Bounded reader reports EOF");
+var flood = new BoundedLineReader(new StringReader(new string('x', 100_000)), 32);
+try { await flood.ReadAsync(default); throw new Exception("Oversized line accepted"); }
+catch (IOException) { checks++; }
+using (var cancelled = new CancellationTokenSource())
+{
+    cancelled.Cancel();
+    try { await new BoundedLineReader(new StringReader("data"), 32).ReadAsync(cancelled.Token); throw new Exception("Cancellation ignored"); }
+    catch (OperationCanceledException) { checks++; }
+}
+using (var child = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(Path.Combine(Environment.SystemDirectory, "ping.exe"))
+    { UseShellExecute = false, CreateNoWindow = true, ArgumentList = { "-t", "127.0.0.1" }, RedirectStandardOutput = true })!)
+{
+    try
+    {
+        using (var job = new ChildProcessJob()) { job.Assign(child); }
+        Check(child.WaitForExit(5000), "Closing job terminates its child process");
+    }
+    finally { if (!child.HasExited) child.Kill(); }
+}
 Check(ColorMath.FromHsv(0, 1, 1) == ((byte)255, (byte)0, (byte)0), "Hue red");
 Check(ColorMath.FromHsv(120, 1, 1) == ((byte)0, (byte)255, (byte)0), "Hue green");
 Check(ColorMath.FromHsv(240, 1, 1) == ((byte)0, (byte)0, (byte)255), "Hue blue");
