@@ -2,6 +2,8 @@
 
 A compact Windows desktop widget for Codex subscription limits, built with C# and WPF on .NET 10 LTS.
 
+The app uses a cyan neural-hourglass icon for its EXE, windows and tray. Source artwork, multi-resolution ICO and the generation prompt are in `src/LimitWidget/Assets`; the ICO can also be reused for a future installer.
+
 ## Features
 
 - Real remaining percentages and reset countdowns for the quota windows returned by Codex. Window lengths are taken from the service, including 5-hour and weekly windows when present.

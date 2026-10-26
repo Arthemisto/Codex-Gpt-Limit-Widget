@@ -24,7 +24,7 @@ public sealed class SettingsWindow : Window
 
     public SettingsWindow(MainWindow widget)
     {
-        this.widget = widget; Title = "Settings · Codex Limit Widget"; Width = 390; Height = 650; MinWidth = 370; MinHeight = 400;
+        this.widget = widget; Icon = widget.Icon; Title = "Settings · Codex Limit Widget"; Width = 390; Height = 650; MinWidth = 370; MinHeight = 400;
         Resources.Add(typeof(CheckBox), new Style(typeof(CheckBox), (Style)Application.Current.FindResource(typeof(CheckBox))) { Setters = { new Setter(MarginProperty, new Thickness(0, 3, 0, 3)), new Setter(FontSizeProperty, 14d) } });
         FontFamily = new FontFamily("Segoe UI"); FontSize = 14; WindowStartupLocation = WindowStartupLocation.CenterOwner;
         SetResourceReference(BackgroundProperty, "Surface");

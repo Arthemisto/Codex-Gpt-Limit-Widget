@@ -22,6 +22,7 @@ public partial class MainWindow : Window
     readonly Stopwatch sinceAttempt = new();
     readonly List<(TextBlock Label, DateTimeOffset? Reset)> countdowns = new();
     readonly Forms.NotifyIcon tray;
+    readonly System.Drawing.Icon trayImage;
     bool busy, exiting, hasError;
     readonly bool smokeTest;
     string status = "Connecting to Codex…";
@@ -46,6 +47,8 @@ public partial class MainWindow : Window
     {
         this.smokeTest = smokeTest;
         InitializeComponent();
+        var iconUri = new Uri("pack://application:,,,/Assets/app.ico");
+        Icon = System.Windows.Media.Imaging.BitmapFrame.Create(iconUri);
         var saved = smokeTest ? new WidgetSettings() : WidgetSettings.Load();
         ShowCodex = saved.ShowCodex; Locked = saved.Locked; Topmost = saved.Topmost;
         RememberMe = saved.RememberMe; ShowUpdated = saved.ShowUpdated; ShowCountdown = saved.ShowCountdown; ShowLaunch = saved.ShowLaunch;
@@ -68,7 +71,10 @@ public partial class MainWindow : Window
         menu.Items.Add("Refresh", null, async (_, _) => await Dispatcher.InvokeAsync(RefreshLimitsAsync).Task.Unwrap());
         menu.Items.Add("Settings", null, (_, _) => Dispatcher.Invoke(ShowSettings));
         menu.Items.Add("Exit", null, (_, _) => Dispatcher.Invoke(ExitWidget));
-        tray = new Forms.NotifyIcon { Icon = System.Drawing.SystemIcons.Application, Text = "Codex Limit Widget", ContextMenuStrip = menu, Visible = true };
+        using (var iconStream = Application.GetResourceStream(iconUri)!.Stream)
+        using (var embeddedIcon = new System.Drawing.Icon(iconStream))
+            trayImage = new System.Drawing.Icon(embeddedIcon, Forms.SystemInformation.SmallIconSize);
+        tray = new Forms.NotifyIcon { Icon = trayImage, Text = "Codex Limit Widget", ContextMenuStrip = menu, Visible = true };
         tray.DoubleClick += (_, _) => Dispatcher.Invoke(ShowWidget);
 
         updateTimer.Tick += async (_, _) =>
@@ -85,7 +91,7 @@ public partial class MainWindow : Window
         {
             updateTimer.Stop(); lifetime.Cancel(); loginCancellation?.Cancel(); client?.Dispose();
             SystemEvents.UserPreferenceChanged -= OnThemeChanged; SystemEvents.DisplaySettingsChanged -= OnDisplaysChanged;
-            tray.Visible = false; tray.Dispose();
+            tray.Visible = false; tray.Dispose(); trayImage.Dispose();
         };
         RefreshView();
     }

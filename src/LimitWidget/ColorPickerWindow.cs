@@ -23,6 +23,7 @@ public sealed class ColorPickerWindow : Window
     public ColorPickerWindow(string title, Color initial)
     {
         Title = title; Width = 350; SizeToContent = SizeToContent.Height; ResizeMode = ResizeMode.NoResize;
+        SourceInitialized += (_, _) => Icon = Owner?.Icon;
         WindowStartupLocation = WindowStartupLocation.CenterOwner; FontFamily = new FontFamily("Segoe UI"); FontSize = 14;
         SetResourceReference(BackgroundProperty, "ButtonSurface"); SetResourceReference(ForegroundProperty, "Foreground");
         var panel = new StackPanel { Margin = new Thickness(14) }; Content = panel;
