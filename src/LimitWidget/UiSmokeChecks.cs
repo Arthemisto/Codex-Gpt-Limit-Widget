@@ -44,6 +44,10 @@ internal static class UiSmokeChecks
             await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
             Capture(settings, Path.Combine(outputDirectory, "settings.png")); settings.Close();
             results.Add("Settings open and render");
+            var colorPicker = new ColorPickerWindow("Codex accent", window.AccentColor) { Owner = window }; colorPicker.Show();
+            await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
+            Capture(colorPicker, Path.Combine(outputDirectory, "color-picker.png")); colorPicker.Close();
+            results.Add("RGB / HSV color picker opens and renders");
             window.Hide(); window.ShowWidget(); results.Add("Hide and restore");
         }
         catch (Exception e) { error = e.GetType().Name + ": " + e.Message; }

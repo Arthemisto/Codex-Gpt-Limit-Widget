@@ -16,6 +16,12 @@ A compact Windows desktop widget for Codex subscription limits, built with C# an
 
 ChatGPT chat limits are planned separately for V2 and are disabled in this release. No ChatGPT quota values are simulated.
 
+The live quota-source probe currently returns only `codex` for the tested account. The existing OAuth connection has not provided ordinary ChatGPT chat quotas; a second accent does not imply a connected second quota source. Recheck without accessing conversations or credential files:
+
+```powershell
+dotnet run --project tests/LimitWidget.Checks -- --limit-catalog
+```
+
 ## Run
 
 Use the portable `LimitWidget.exe` from a local build. It includes the .NET runtime; it still requires an installed **Codex CLI**. The Codex desktop app is required for the Launch Codex button (`codex://`).

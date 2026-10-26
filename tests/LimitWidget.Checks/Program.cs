@@ -2,6 +2,16 @@ using System.Text.Json;
 using LimitWidget.Services;
 using LimitWidget;
 
+if (args.Contains("--limit-catalog"))
+{
+    using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(50));
+    using var client = new CodexClient();
+    await client.StartAsync(true, true, timeout.Token);
+    var ids = await client.ReadLimitIdsAsync(timeout.Token);
+    Console.WriteLine("Available quota identifiers: " + string.Join(", ", ids));
+    return;
+}
+
 if (args.Contains("--oauth-probe"))
 {
     using var cancellation = new CancellationTokenSource(TimeSpan.FromSeconds(45));
