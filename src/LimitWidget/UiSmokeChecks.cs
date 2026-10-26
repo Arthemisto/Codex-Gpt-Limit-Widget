@@ -37,6 +37,15 @@ internal static class UiSmokeChecks
             window.ShowCountdown = true; window.ShowCodex = true; window.RefreshView();
             if (!ReferenceEquals(originalSection, window.QuotaRows.Children[0])) throw new InvalidOperationException("Display toggles rebuilt quota elements.");
             results.Add("Quota elements and theme brushes reused; display toggles and footer collapse work");
+            var ring = FindRing(window.QuotaRows) ?? throw new InvalidOperationException("Quota ring missing.");
+            ring.Percent = 0;
+            await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
+            byte[] emptyRing = Pixels(ring);
+            ring.Percent = 100;
+            await window.Dispatcher.InvokeAsync(() => { }, DispatcherPriority.ApplicationIdle);
+            if (emptyRing.SequenceEqual(Pixels(ring))) throw new InvalidOperationException("Reused ring did not repaint changed percentage.");
+            window.RefreshView();
+            results.Add("Reused ring repaints percentage changes");
             foreach (string theme in new[] { "Dark", "Light", "Adaptive glass" })
             {
                 window.Theme = theme; window.RefreshView();
@@ -97,5 +106,21 @@ internal static class UiSmokeChecks
         bitmap.Render(visual);
         var encoder = new PngBitmapEncoder(); encoder.Frames.Add(BitmapFrame.Create(bitmap));
         using var stream = File.Create(path); encoder.Save(stream);
+    }
+
+    static QuotaRing? FindRing(DependencyObject root)
+    {
+        if (root is QuotaRing ring) return ring;
+        for (int i = 0; i < VisualTreeHelper.GetChildrenCount(root); i++)
+            if (FindRing(VisualTreeHelper.GetChild(root, i)) is { } child) return child;
+        return null;
+    }
+
+    static byte[] Pixels(FrameworkElement visual)
+    {
+        var bitmap = new RenderTargetBitmap((int)visual.ActualWidth, (int)visual.ActualHeight, 96, 96, PixelFormats.Pbgra32);
+        bitmap.Render(visual);
+        var pixels = new byte[bitmap.PixelWidth * bitmap.PixelHeight * 4]; bitmap.CopyPixels(pixels, bitmap.PixelWidth * 4, 0);
+        return pixels;
     }
 }

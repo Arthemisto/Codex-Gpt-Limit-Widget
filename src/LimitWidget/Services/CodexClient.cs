@@ -85,7 +85,7 @@ public sealed class CodexClient : IDisposable
         catch { Dispose(); throw; }
         responses = ReadResponsesAsync(process);
         errors = DrainErrorsAsync(process);
-        await RequestAsync("initialize", new { clientInfo = new { name = "codex_limit_widget", title = "Codex Limit Widget", version = "0.3.1" } }, cancellationToken);
+        await RequestAsync("initialize", new { clientInfo = new { name = "codex_limit_widget", title = "Codex Limit Widget", version = "0.4.0" } }, cancellationToken);
         await WriteAsync(new { method = "initialized", @params = new { } }, cancellationToken);
     }
 
