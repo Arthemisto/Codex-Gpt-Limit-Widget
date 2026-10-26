@@ -36,7 +36,20 @@ public sealed class ColorPickerWindow : Window
         spectrum.MouseLeftButtonUp += (_, _) => spectrum.ReleaseMouseCapture();
         var rainbow = new LinearGradientBrush();
         foreach (var stop in new[] { (Colors.Red, 0d), (Colors.Yellow, 1d / 6), (Colors.Lime, 2d / 6), (Colors.Cyan, 3d / 6), (Colors.Blue, 4d / 6), (Colors.Magenta, 5d / 6), (Colors.Red, 1d) }) rainbow.GradientStops.Add(new GradientStop(stop.Item1, stop.Item2));
-        panel.Children.Add(new Border { Height = 12, Background = rainbow, CornerRadius = new CornerRadius(3), Margin = new Thickness(0, 9, 0, 0) });
+        hue.Height = 26; hue.IsMoveToPointEnabled = true; hue.ToolTip = "Hue";
+        hue.Background = rainbow;
+        hue.Template = (ControlTemplate)System.Windows.Markup.XamlReader.Parse("""
+            <ControlTemplate xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" TargetType="Slider">
+              <Grid>
+                <Border Background="{TemplateBinding Background}" Height="16" Margin="7,0" CornerRadius="5"/>
+                <Track x:Name="PART_Track">
+                  <Track.DecreaseRepeatButton><RepeatButton Command="Slider.DecreaseLarge" Opacity="0" Focusable="False"/></Track.DecreaseRepeatButton>
+                  <Track.Thumb><Thumb Width="14" Height="24"><Thumb.Template><ControlTemplate TargetType="Thumb"><Border BorderBrush="White" BorderThickness="2" CornerRadius="5" Background="#40000000"/></ControlTemplate></Thumb.Template></Thumb></Track.Thumb>
+                  <Track.IncreaseRepeatButton><RepeatButton Command="Slider.IncreaseLarge" Opacity="0" Focusable="False"/></Track.IncreaseRepeatButton>
+                </Track>
+              </Grid>
+            </ControlTemplate>
+            """);
         panel.Children.Add(hue); hue.ValueChanged += (_, _) => { if (!updating) UpdateFromSpectrum(); };
         var fields = new System.Windows.Controls.Primitives.UniformGrid { Columns = 3 };
         for (int i = 0; i < 3; i++)
