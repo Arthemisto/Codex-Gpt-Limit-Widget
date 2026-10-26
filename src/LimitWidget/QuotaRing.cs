@@ -4,7 +4,7 @@ using System.Windows.Media;
 namespace LimitWidget;
 public sealed class QuotaRing : FrameworkElement
 {
- public double Percent { get; set; }
+ public double? Percent { get; set; }
  public Brush RingBrush { get; set; } = Brushes.MediumAquamarine;
  protected override void OnRender(DrawingContext dc)
  {
@@ -12,7 +12,7 @@ public sealed class QuotaRing : FrameworkElement
   var center = new Point(ActualWidth / 2, ActualHeight / 2);
   double radius = Math.Max(1, Math.Min(ActualWidth, ActualHeight) / 2 - 9);
   dc.DrawEllipse(null, new Pen((Brush)FindResource("Line"), 9), center, radius, radius);
-  double p = Math.Clamp(Percent, 0, 100);
+  double p = Math.Clamp(Percent ?? 0, 0, 100);
   var pen = new Pen(RingBrush, 9) { StartLineCap = PenLineCap.Round, EndLineCap = PenLineCap.Round };
   if (p >= 100) dc.DrawEllipse(null, pen, center, radius, radius);
   else if (p > 0)
@@ -26,8 +26,8 @@ public sealed class QuotaRing : FrameworkElement
    }
    dc.DrawGeometry(null, pen, geometry);
   }
-  DrawText(dc, $"{p:0}%", 27, center.Y - 29, (Brush)FindResource("Foreground"), FontWeights.SemiBold);
-  DrawText(dc, "remaining", 11, center.Y + 8, (Brush)FindResource("Muted"), FontWeights.Normal);
+  DrawText(dc, Percent.HasValue ? $"{p:0}%" : "—", 27, center.Y - 29, (Brush)FindResource("Foreground"), FontWeights.SemiBold);
+  DrawText(dc, Percent.HasValue ? "remaining" : "no data", 11, center.Y + 8, (Brush)FindResource("Muted"), FontWeights.Normal);
  }
  void DrawText(DrawingContext dc, string value, double size, double y, Brush brush, FontWeight weight)
  {

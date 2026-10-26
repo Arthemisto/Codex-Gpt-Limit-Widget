@@ -12,17 +12,24 @@ public sealed class WidgetSettings
  public double Width { get; set; } = 340;
  public double Opacity { get; set; } = 0.8;
  public int RefreshMinutes { get; set; } = 10;
+ public bool RememberMe { get; set; } = true;
+ public string SessionMode { get; set; } = "existing";
+ public bool ShowUpdated { get; set; } = true;
+ public bool ShowCountdown { get; set; } = true;
+ public bool ShowLaunch { get; set; } = true;
  static string FilePath => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "CodexGptLimitWidget", "settings.json");
- public static WidgetSettings Load()
+ public static WidgetSettings Load(string? filePath = null)
  {
-  try { return File.Exists(FilePath) ? JsonSerializer.Deserialize<WidgetSettings>(File.ReadAllText(FilePath)) ?? new() : new(); }
+  filePath ??= FilePath;
+  try { return File.Exists(filePath) ? JsonSerializer.Deserialize<WidgetSettings>(File.ReadAllText(filePath)) ?? new() : new(); }
   catch (Exception e) when (e is IOException or UnauthorizedAccessException or JsonException) { return new(); }
  }
- public void Save()
+ public void Save(string? filePath = null)
  {
-  Directory.CreateDirectory(Path.GetDirectoryName(FilePath)!);
-  string temporary = FilePath + ".tmp";
+  filePath ??= FilePath;
+  Directory.CreateDirectory(Path.GetDirectoryName(filePath)!);
+  string temporary = filePath + ".tmp";
   File.WriteAllText(temporary, JsonSerializer.Serialize(this, new JsonSerializerOptions { WriteIndented = true }));
-  File.Move(temporary, FilePath, true);
+  File.Move(temporary, filePath, true);
  }
 }
