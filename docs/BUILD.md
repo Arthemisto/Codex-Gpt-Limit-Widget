@@ -58,7 +58,7 @@ Test installation, start, sign-in, countdown, saved settings, shortcuts, upgrade
 ```powershell
 .\artifacts\installer-payload\LimitWidget.exe --smoke-test artifacts/smoke
 Get-Content artifacts/smoke/smoke-result.json
-Get-FileHash artifacts/installer/CodexLimitWidget-0.2.0-setup-x64.exe -Algorithm SHA256
+Get-FileHash artifacts/installer/CodexLimitWidget-0.3.0-setup-x64.exe -Algorithm SHA256
 ```
 
 Candidates are provided for user testing before a final release. The EXEs are currently unsigned; code signing is not configured. Vulnerability review is a separate step and is not implied by successful compilation or functional checks.
